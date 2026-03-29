@@ -33,6 +33,10 @@ export default async function DashboardPage() {
   const dbUser = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!dbUser?.name) redirect("/onboarding");
 
+  if (dbUser.role === "STUDENT") {
+    redirect("/student/dashboard");
+  }
+
   const memberships = await prisma.classroomMember.findMany({
     where: { userId: session.user.id },
     include: { classroom: { include: { _count: { select: { members: true, courses: true } } } } },

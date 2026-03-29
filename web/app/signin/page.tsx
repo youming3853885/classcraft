@@ -44,7 +44,13 @@ export default function SignInPage() {
       }
       const idToken = await uc.user.getIdToken();
       const res = await signIn("credentials", { idToken, action: "login", redirect: false, callbackUrl: "/dashboard" });
-      if (res?.error) return setError("帳號或密碼錯誤，請再試一次");
+      if (res?.error) {
+        if (res.error === "NOT_REGISTERED" || res.error.includes("NOT_REGISTERED")) {
+          window.location.href = "/register";
+          return;
+        }
+        return setError("帳號或密碼錯誤，請再試一次");
+      }
       if (res?.url) window.location.href = res.url as string;
     } catch (err: any) {
       const codes = ["auth/invalid-credential","auth/wrong-password","auth/user-not-found"];
@@ -58,7 +64,14 @@ export default function SignInPage() {
       const uc = await signInWithPopup(auth, new GoogleAuthProvider());
       const idToken = await uc.user.getIdToken();
       const res = await signIn("credentials", { idToken, action: "login", redirect: false, callbackUrl: "/dashboard" });
-      if (res?.error) setError("Google 登入同步失敗");
+      if (res?.error) {
+        if (res.error === "NOT_REGISTERED" || res.error.includes("NOT_REGISTERED")) {
+          // 未註冊使用者，自動導向角色選擇畫面
+          window.location.href = "/register";
+          return;
+        }
+        setError("Google 登入同步失敗");
+      }
       else if (res?.url) window.location.href = res.url as string;
     } catch (err: any) {
       if (err.code !== "auth/popup-closed-by-user") setError(err.message || "Google 登入失敗");

@@ -16,14 +16,12 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      // Google 登入時自動 upsert 使用者到 DB
+      // Google 登入時如果資料庫沒有紀錄，則回報錯誤（因為我們想把註冊交給 /register 頁面）
       if (account?.provider === "google" && user.email) {
         const existing = await prisma.user.findUnique({ where: { email: user.email } });
         if (!existing) {
-          const created = await prisma.user.create({
-            data: { email: user.email, name: user.name, image: user.image, role: "STUDENT" },
-          });
-          user.id = created.id;
+          // 禁止自動註冊
+          throw new Error("NOT_REGISTERED");
         } else {
           user.id = existing.id;
           // 同步最新頭像與名稱
@@ -128,16 +126,9 @@ export const authOptions: NextAuthOptions = {
                // ... Optional: add starting stats or character class logic here
             }
           } else {
-            // Standard Login - User must exist, or we auto-provision
+            // Standard Login - User must exist! No auto-provisioning on simple login
             if (!user) {
-              user = await prisma.user.create({
-                data: {
-                  email,
-                  name: decoded.name || email.split('@')[0],
-                  role: "STUDENT",
-                  image: decoded.picture || null,
-                },
-              });
+              throw new Error("NOT_REGISTERED");
             }
           }
 
