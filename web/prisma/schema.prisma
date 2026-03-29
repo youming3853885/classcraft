@@ -1,0 +1,530 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite 不支援 native enum；使用 String 欄位儲存角色值
+// 合法值：ADMIN | TEACHER | ASSISTANT | STUDENT | PARENT
+// 合法值（CurrencyType）：COINS | GEMS
+// 合法值（LedgerEventType）：ASSIGNMENT_SUBMITTED | ASSIGNMENT_REVIEWED | CLASSROOM_BEHAVIOR | TEAM_BONUS | REWARD_REDEMPTION | MANUAL_ADJUSTMENT
+// 合法值（RedemptionStatus）：PENDING | APPROVED | REJECTED | FULFILLED
+
+model User {
+  id            String                 @id @default(cuid())
+  name          String?                @unique
+  email         String?                @unique
+  emailVerified DateTime?
+  image         String?
+  role          String                 @default("STUDENT")
+  password      String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  memberships   OrgMembership[]
+  classrooms    ClassroomMember[]
+  teams         TeamMember[]
+  submissions   AssignmentSubmission[]
+  pointsGiven   PointsLedger[]         @relation("PointsIssuedBy")
+  pointsFor     PointsLedger[]         @relation("PointsAssignedTo")
+  wallets       Wallet[]
+  redemptions   RewardRedemption[]
+  accounts      Account[]
+  sessions      Session[]
+  questCompletions QuestCompletion[]
+  bossAnswers   BossAnswer[]
+  pets          Pet[]
+  equipment     Equipment[]
+  userEquipment UserEquipment[]
+  badges        UserBadge[]
+  userConsumables UserConsumable[]
+  userSkills    UserSkill[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Organization {
+  id          String          @id @default(cuid())
+  name        String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  memberships OrgMembership[]
+  classrooms  Classroom[]
+  rewards     RewardItem[]
+  rules       BehaviorRule[]
+}
+
+model OrgMembership {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           String
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+model Classroom {
+  id                String             @id @default(cuid())
+  name              String
+  organizationId    String
+  inviteCode        String?            @unique @default(cuid())
+  // Classcraft 遊戲設定
+  initialHp         Int                @default(100)      // 起始血量
+  initialXp         Int                @default(0)       // 起始經驗值
+  dailyAp           Int                @default(3)        // 每日行動力
+  maxHp             Int                @default(100)      // 最大血量
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members           ClassroomMember[]
+  courses           Course[]
+  teams             Team[]
+  rules             BehaviorRule[]
+  pointsLedgers     PointsLedger[]
+  wallets           Wallet[]
+  rewardRedemptions RewardRedemption[]
+  quests            Quest[]
+  bossBattles       BossBattle[]
+  randomEvents      RandomEvent[]
+  classroomPets     ClassroomPet[]
+  levelProgress    LevelProgress[]
+}
+
+model ClassroomMember {
+  id          String    @id @default(cuid())
+  classroomId String
+  userId      String
+  role        String
+  // Classcraft 遊戲角色資料
+  characterClass String?  @default("WARRIOR")  // WARRIOR, MAGE, HEALER
+  avatarUrl      String?
+  // RPG 屬性
+  str          Int       @default(10)   // 力量 - 影響攻擊力
+  int          Int       @default(10)   // 智力 - 影響魔力上限
+  vit          Int       @default(10)   // 耐力 - 影響 HP 上限
+  // 戰鬥數值
+  currentHp    Int       @default(100)  // 當前 HP
+  maxHp        Int       @default(100)  // 最大 HP
+  currentMp    Int       @default(50)   // 當前 MP
+  maxMp        Int       @default(50)   // 最大 MP
+  // 裝備數據 (JSON 字串儲存)
+  equipment    String?   @default("{}")  // 裝備 JSON: {helmet, armor, weapon, cape}
+  // 寵物
+  petId        String?   // 裝備的寵物 ID
+  joinedAt     DateTime  @default(now())
+  classroom      Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, userId])
+}
+
+model Course {
+  id          String       @id @default(cuid())
+  classroomId String
+  title       String
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  classroom   Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+}
+
+model Assignment {
+  id          String                 @id @default(cuid())
+  courseId    String
+  title       String
+  description String?
+  xpReward    Int                    @default(0)
+  coinReward  Int                    @default(0)
+  dueAt       DateTime?
+  publishedAt DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  course      Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+}
+
+model AssignmentSubmission {
+  id           String     @id @default(cuid())
+  assignmentId String
+  studentId    String
+  content      String?
+  submittedAt  DateTime?
+  gradedAt     DateTime?
+  score        Float?
+  grade        String?    // A, B, C, D, F
+  feedback     String?
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+}
+
+model Team {
+  id            String         @id @default(cuid())
+  classroomId   String
+  name          String
+  createdAt     DateTime       @default(now())
+  classroom     Classroom      @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  members       TeamMember[]
+  pointsLedgers PointsLedger[]
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  joinedAt DateTime @default(now())
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model PointsLedger {
+  id           String          @id @default(cuid())
+  classroomId  String
+  teamId       String?
+  targetUserId String
+  actorUserId  String
+  eventType    String
+  xpDelta      Int             @default(0)
+  hpDelta      Int             @default(0)
+  coinDelta    Int             @default(0)
+  reason       String?
+  sourceRef    String?
+  createdAt    DateTime        @default(now())
+  classroom    Classroom       @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  team         Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  targetUser   User            @relation("PointsAssignedTo", fields: [targetUserId], references: [id], onDelete: Cascade)
+  actorUser    User            @relation("PointsIssuedBy", fields: [actorUserId], references: [id], onDelete: Cascade)
+}
+
+model Wallet {
+  id          String       @id @default(cuid())
+  userId      String
+  classroomId String
+  currency    String       @default("COINS")
+  balance     Int          @default(0)
+  updatedAt   DateTime     @updatedAt
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classroom   Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, classroomId, currency])
+}
+
+model BehaviorRule {
+  id             String       @id @default(cuid())
+  organizationId String
+  classroomId    String?
+  name           String
+  description    String?
+  xpDelta        Int          @default(0)
+  hpDelta        Int          @default(0)
+  coinDelta      Int          @default(0)
+  cooldownSec    Int          @default(0)
+  dailyCap       Int          @default(0)
+  isEnabled      Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  classroom      Classroom?   @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+}
+
+model RewardItem {
+  id             String             @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  coinCost       Int
+  stock          Int?
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  redemptions    RewardRedemption[]
+}
+
+model RewardRedemption {
+  id           String           @id @default(cuid())
+  rewardItemId String
+  userId       String
+  classroomId  String
+  quantity     Int              @default(1)
+  totalCost    Int
+  status       String           @default("PENDING")
+  requestedAt  DateTime         @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+  rewardItem   RewardItem       @relation(fields: [rewardItemId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classroom    Classroom        @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+}
+
+// 冒險任務 (Quests)
+model Quest {
+  id          String       @id @default(cuid())
+  classroomId String
+  title       String
+  description String?
+  xpReward    Int          @default(0)
+  coinReward  Int          @default(0)
+  hpReward    Int          @default(0)
+  isRequired  Boolean      @default(false)
+  orderIndex  Int          @default(0)
+  isActive    Boolean      @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime     @default(now())
+  classroom   Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  completions QuestCompletion[]
+
+  @@unique([classroomId, orderIndex])
+}
+
+model QuestCompletion {
+  id          String   @id @default(cuid())
+  questId     String
+  studentId   String
+  completedAt DateTime @default(now())
+  quest       Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([questId, studentId])
+}
+
+// 魔王對抗賽 (Boss Battles)
+model BossBattle {
+  id          String    @id @default(cuid())
+  classroomId String
+  title       String
+  description String?
+  bossHp      Int       @default(100)
+  currentHp   Int       @default(100)
+  correctDamage Int     @default(10)
+  wrongDamage  Int      @default(5)
+  isActive    Boolean   @default(false)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  questions   BossQuestion[]
+  answers     BossAnswer[]
+}
+
+model BossQuestion {
+  id          String      @id @default(cuid())
+  battleId    String
+  question    String
+  answer      String
+  orderIndex  Int         @default(0)
+  bossBattle  BossBattle  @relation(fields: [battleId], references: [id], onDelete: Cascade)
+}
+
+model BossAnswer {
+  id         String   @id @default(cuid())
+  battleId   String
+  studentId  String
+  questionId String
+  isCorrect  Boolean
+  createdAt  DateTime @default(now())
+  bossBattle BossBattle @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([battleId, studentId, questionId])
+}
+
+// 命運之輪 (Random Events)
+model RandomEvent {
+  id          String    @id @default(cuid())
+  classroomId String
+  title       String
+  description String
+  xpDelta     Int       @default(0)
+  hpDelta     Int       @default(0)
+  coinDelta   Int       @default(0)
+  triggerAt   DateTime
+  isTriggered Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+}
+
+// 寵物系統 (Pets)
+model Pet {
+  id          String        @id @default(cuid())
+  name        String
+  type        String        // CAT, DOG, DRAGON, OWL, etc.
+  imageUrl    String?
+  hungryAt    DateTime?     // 上次餵食時間
+  lastFedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  ownerId     String
+  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  classrooms  ClassroomPet[]
+}
+
+model ClassroomPet {
+  id          String   @id @default(cuid())
+  classroomId String
+  petId       String
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  pet         Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, petId])
+}
+
+// 裝備系統 (Equipment)
+model Equipment {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // WEAPON, ARMOR, ACCESSORY
+  rarity      String   @default("COMMON") // COMMON, UNCOMMON, RARE, EPIC, LEGENDARY
+  imageUrl    String?
+  statBonus   Int      @default(0)
+  statType    String?  // XP, HP, COINS
+  description String?
+  createdAt   DateTime @default(now())
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  userEquipments UserEquipment[]
+}
+
+model UserEquipment {
+  id            String     @id @default(cuid())
+  userId        String
+  equipmentId   String
+  equippedAt    DateTime?
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  equipment     Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, equipmentId])
+}
+
+// 徽章系統 (Badges)
+model Badge {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  requirement String?
+  createdAt   DateTime @default(now())
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id         String   @id @default(cuid())
+  userId     String
+  badgeId    String
+  earnedAt   DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge      Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+}
+
+// 消耗品 (Consumables)
+model Consumable {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  effect      String   // HP_HEAL, XP_BOOST, etc.
+  value       Int      @default(0)
+  price       Int      @default(0)
+  createdAt   DateTime @default(now())
+  userConsumables UserConsumable[]
+}
+
+model UserConsumable {
+  id             String       @id @default(cuid())
+  userId         String
+  consumableId   String
+  quantity       Int          @default(1)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consumable     Consumable   @relation(fields: [consumableId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, consumableId])
+}
+
+// 技能系統 (Skills)
+model Skill {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  icon        String?     // emoji 或圖示
+  skillType   String      // BUFF, HEAL, ATTACK, PASSIVE
+  effect      String      // 技能效果描述
+  cooldown    Int         @default(0)     // 冷卻秒數
+  levelReq    Int         @default(1)     // 需要等級
+  statBonus   Int         @default(0)     // 屬性加成
+  createdAt   DateTime    @default(now())
+  userSkills  UserSkill[]
+}
+
+model UserSkill {
+  id          String   @id @default(cuid())
+  userId      String
+  skillId     String
+  level       Int      @default(1)   // 技能等級
+  unlockedAt  DateTime @default(now())
+  lastUsedAt  DateTime?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill       Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId])
+}
+
+// 等級系統 (Level)
+model LevelProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  classroomId String
+  level       Int      @default(1)
+  currentXp   Int      @default(0)
+  totalXp     Int      @default(0)
+  updatedAt   DateTime @updatedAt
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, classroomId])
+}
