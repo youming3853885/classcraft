@@ -82,7 +82,6 @@ export default function StudentCharacterPage({ data }: { data: CharacterProps })
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          characterClass: selectedClass,
           equipment,
         }),
       })
@@ -232,29 +231,7 @@ export default function StudentCharacterPage({ data }: { data: CharacterProps })
           </div>
         </div>
 
-        {/* 職業選擇 */}
-        <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700 p-6">
-          <h2 className="text-xl font-semibold mb-4">選擇職業</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {CLASSES.map((cls) => (
-              <button
-                key={cls.id}
-                onClick={() => setSelectedClass(cls.id)}
-                className={`rounded-xl border-2 p-4 text-left transition ${
-                  selectedClass === cls.id
-                    ? "border-purple-500 bg-purple-900/30"
-                    : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-500"
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-3xl">{cls.emoji}</span>
-                  <span className="font-bold text-lg">{cls.name}</span>
-                </div>
-                <p className="text-sm text-zinc-400">{cls.description}</p>
-              </button>
-            ))}
-          </div>
-        </div>
+
 
         {/* 裝備系統 */}
         <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700 p-6">

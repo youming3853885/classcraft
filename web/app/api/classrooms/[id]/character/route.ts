@@ -12,7 +12,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id: classroomId } = await params
   const body = await req.json()
 
-  const { characterClass, str, int, vit, equipment, petId } = body
+  const { str, int, vit, equipment, petId } = body
 
   // 檢查用戶是否為該班級的成員
   const member = await prisma.classroomMember.findUnique({
@@ -35,14 +35,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   let hpBonus = 0
   let mpBonus = 0
 
-  if (characterClass === "WARRIOR") {
+  if (member.characterClass === "WARRIOR") {
     strBonus = 5
     vitBonus = 3
     hpBonus = 20
-  } else if (characterClass === "MAGE") {
+  } else if (member.characterClass === "MAGE") {
     intBonus = 5
     mpBonus = 30
-  } else if (characterClass === "HEALER") {
+  } else if (member.characterClass === "HEALER") {
     intBonus = 3
     vitBonus = 2
     hpBonus = 10
@@ -53,7 +53,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const updated = await prisma.classroomMember.update({
     where: { id: member.id },
     data: {
-      ...(characterClass && { characterClass }),
       str: str ?? member.str,
       int: int ?? member.int,
       vit: vit ?? member.vit,
