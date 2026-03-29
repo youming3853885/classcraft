@@ -156,361 +156,116 @@ export function CharacterAvatar({
   const sizeMap = { sm: 64, md: 96, lg: 128, xl: 192, "2xl": 256, "3xl": 320 }
   const px = sizeMap[size]
 
-  const eq = equipment
-
-  // Resolve legacy aliases
-  const guardianKey = eq.guardian || eq.cape
-  const earring1Key = eq.earring1 || eq.accessory
-
-  const helmetDef   = eq.helmet    ? EQUIPMENT_REGISTRY[eq.helmet]    : null
-  const armorDef    = eq.armor     ? EQUIPMENT_REGISTRY[eq.armor]     : null
-  const pantsDef    = eq.pants     ? EQUIPMENT_REGISTRY[eq.pants]     : null
-  const guardianDef = guardianKey  ? EQUIPMENT_REGISTRY[guardianKey]  : null
-  const bootsDef    = eq.boots     ? EQUIPMENT_REGISTRY[eq.boots]     : null
-  const petDef      = eq.pet       ? EQUIPMENT_REGISTRY[eq.pet]       : null
-  const offhandDef  = eq.offhand   ? EQUIPMENT_REGISTRY[eq.offhand]   : null
-  const weaponDef   = eq.weapon    ? EQUIPMENT_REGISTRY[eq.weapon]    : null
-  const earring1Def = earring1Key  ? EQUIPMENT_REGISTRY[earring1Key]  : null
-  const earring2Def = eq.earring2  ? EQUIPMENT_REGISTRY[eq.earring2]  : null
-
   const triggerAnim = () => {
     if (showAnimation) { setIsAnimating(true); setTimeout(() => setIsAnimating(false), 600) }
   }
 
-  // ── Nano Banana Q-style proportions ──
-  // ViewBox: 100 × 120
-  // Head: big circle cx=50 cy=28 r=22 (head occupies ~37% of height)
-  // Body: rounded rect x=22 y=46 w=56 h=36 rx=12 (chubby torso)
-  // Legs: two rounded rects below body
-  // Arms: stubby rounded rects on sides
+  // Define paths for our newly generated high quality sprites
+  const avatarPath = `/avatars/${characterClass.toLowerCase()}.png`
+
+  // Base Aura from class configuration
+  const classAuraColor = cfg.bodyColor || "#fff";
+
+  // Check Equipment for Special Overlays / Auras
+  // Even though we aren't rendering the physical hat, we show its magical aura
+  const eq = equipment;
+  const helmetDef = eq.helmet ? EQUIPMENT_REGISTRY[eq.helmet] : null;
+  const armorDef = eq.armor ? EQUIPMENT_REGISTRY[eq.armor] : null;
+  const weaponDef = eq.weapon ? EQUIPMENT_REGISTRY[eq.weapon] : null;
+  const guardianDef = (eq.guardian || eq.cape) ? EQUIPMENT_REGISTRY[eq.guardian || eq.cape!] : null;
 
   return (
     <motion.div
-      className="relative flex-shrink-0 cursor-pointer select-none"
-      style={{ width: px, height: px }}
+      className="relative flex-shrink-0 cursor-pointer select-none rounded-[32px] overflow-hidden"
+      style={{ width: px, height: px, backgroundColor: "#080705", border: `3px solid ${cfg.outline}` }}
       onClick={triggerAnim}
-      animate={isAnimating ? { scale: [1, 1.1, 0.95, 1.05, 1] } : {}}
+      animate={isAnimating ? { scale: [1, 1.05, 0.98, 1.05, 1], rotate: [0, -1, 1, 0] } : {}}
       transition={{ duration: 0.5 }}
     >
-      <svg viewBox="0 0 100 120" className="w-full h-full" style={{ imageRendering: "auto", overflow: "visible" }}>
-        <defs>
-          <filter id="nb-glow">
-            <feGaussianBlur stdDeviation="1.5" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-          <filter id="nb-shadow">
-            <feDropShadow dx="0" dy="3" stdDeviation="2.5" floodColor="#000" floodOpacity="0.35" />
-          </filter>
-          <filter id="nb-glow-gold">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-            <feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <radialGradient id="skin-grad" cx="45%" cy="40%" r="60%">
-            <stop offset="0%" stopColor="#fef3c7" />
-            <stop offset="100%" stopColor={cfg.skinColor} />
-          </radialGradient>
-          <radialGradient id="body-grad" cx="50%" cy="30%" r="70%">
-            <stop offset="0%" stopColor={armorDef ? armorDef.svgColor : cfg.bodyColor} stopOpacity="1" />
-            <stop offset="100%" stopColor={armorDef ? armorDef.accentColor : cfg.outline} stopOpacity="0.8" />
-          </radialGradient>
-        </defs>
+      {/* ── BACKGROUND ── */}
+      {/* Class base ambient glow */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent pointer-events-none z-10" />
+      <div 
+        className="absolute inset-[-50%] blur-3xl opacity-40 mix-blend-screen pointer-events-none"
+        style={{ background: `radial-gradient(circle at 50% 50%, ${classAuraColor} 0%, transparent 60%)` }}
+      />
+      {armorDef && (
+         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[150%] h-[50%] blur-2xl opacity-60 mix-blend-screen pointer-events-none z-20"
+              style={{ background: `radial-gradient(ellipse at 50% 100%, ${armorDef.accentColor} 0%, transparent 70%)` }} />
+      )}
 
-        {/* ── Ground shadow ── */}
-        <ellipse cx="50" cy="117" rx="28" ry="4" fill="#000" opacity="0.2" />
+      {/* ── HIGH QUALITY AVATAR IMAGE ── */}
+      {/* 
+        The generated images have white backgrounds (or simple backgrounds). 
+        To blend them into the dark Diablo UI, we can use `mix-blend-multiply` with a light undertone, 
+        or accept the framing as a "Portrait Card". We'll use absolute positioning to fill nicely.
+      */}
+      <div className="absolute inset-0 z-0">
+        {/* We use standard img since these are local public assets dropping in real time */}
+        <img 
+          src={avatarPath} 
+          alt={characterClass} 
+          className="w-full h-full object-cover object-top filter contrast-125 saturate-110 drop-shadow-2xl mix-blend-luminosity brightness-75 transition-all duration-300 group-hover:mix-blend-normal group-hover:brightness-100" 
+        />
+        <img 
+          src={avatarPath} 
+          alt={characterClass + " color burn"} 
+          className="absolute inset-0 w-full h-full object-cover object-top mix-blend-color-burn opacity-80" 
+        />
+      </div>
 
-        {/* ── Layer 0: Guardian (behind character, floating above head) ── */}
-        {guardianDef && (
-          <motion.g
-            animate={{ y: [-3, 3, -3], opacity: [0.85, 1, 0.85] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-            style={{ filter: "url(#nb-glow)" }}
-          >
-            {/* Guardian halo ring */}
-            <ellipse cx="50" cy="4" rx="14" ry="3.5"
-              fill="none" stroke={guardianDef.svgColor} strokeWidth="1.5" opacity="0.7" />
-            {/* Guardian spirit body */}
-            <circle cx="50" cy="2" r="5"
-              fill={guardianDef.svgColor} opacity="0.9"
-              stroke={guardianDef.accentColor} strokeWidth="0.8" />
-            {/* Guardian face */}
-            <circle cx="48.5" cy="1.5" r="0.8" fill="#fff" opacity="0.9" />
-            <circle cx="51.5" cy="1.5" r="0.8" fill="#fff" opacity="0.9" />
-            {/* Guardian glow sparkles */}
-            <circle cx="42" cy="5" r="1" fill={guardianDef.accentColor} opacity="0.8" />
-            <circle cx="58" cy="3" r="0.8" fill={guardianDef.accentColor} opacity="0.6" />
-            <circle cx="46" cy="-1" r="0.6" fill={guardianDef.accentColor} opacity="0.7" />
-          </motion.g>
-        )}
+      {/* ── EQUIPMENT AURAS & EFFECTS ── */}
+      {/* 1. Guardian/Cape: Adds a mystical halo/spirit glow behind */}
+      {guardianDef && (
+        <motion.div 
+          animate={{ opacity: [0.3, 0.7, 0.3], scale: [0.95, 1.05, 0.95] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-x-0 top-0 h-1/2 blur-2xl pointer-events-none z-0"
+          style={{ background: `radial-gradient(circle at 50% 10%, ${guardianDef.accentColor} 0%, transparent 60%)` }}
+        />
+      )}
 
-        {/* ── Layer 1: Left arm (behind body) ── */}
-        <rect x="8" y="48" width="16" height="24" rx="8"
-          fill="url(#skin-grad)" stroke={cfg.outline} strokeWidth="1.2" />
-        {/* Left arm highlight */}
-        <rect x="10" y="50" width="5" height="10" rx="3"
-          fill="#fff" opacity="0.15" />
+      {/* 2. Helmet/Crown: Top spotlight */}
+      {helmetDef && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4/5 h-10 blur-xl opacity-80 mix-blend-screen pointer-events-none z-20"
+             style={{ background: `radial-gradient(ellipse at 50% 0%, ${helmetDef.svgColor} 0%, transparent 70%)` }} />
+      )}
 
-        {/* ── Layer 1b: Off-hand (left) ── */}
-        {offhandDef && (
-          <g style={{ filter: "url(#nb-shadow)" }}>
-            <path
-              d="M 2 52 Q 2 44 9 42 Q 16 44 16 52 L 16 66 Q 16 72 9 75 Q 2 72 2 66 Z"
-              fill={offhandDef.svgColor}
-              stroke={offhandDef.accentColor}
-              strokeWidth="1.2"
-            />
-            {/* Shield boss */}
-            <circle cx="9" cy="59" r="3.5" fill={offhandDef.accentColor} />
-            <line x1="9" y1="47" x2="9" y2="71" stroke={offhandDef.accentColor} strokeWidth="0.8" opacity="0.5" />
-            <line x1="3" y1="59" x2="15" y2="59" stroke={offhandDef.accentColor} strokeWidth="0.8" opacity="0.5" />
-          </g>
-        )}
+      {/* 3. Weapon: Side slash/glow */}
+      {weaponDef && (
+        <motion.div 
+          animate={isAnimating ? { rotate: [-10, 45], opacity: [0, 1, 0] } : {}}
+          className="absolute top-1/4 right-0 w-8 h-full blur-xl mix-blend-screen pointer-events-none z-20"
+          style={{ background: `linear-gradient(to left, ${weaponDef.accentColor} 0%, transparent 100%)`, opacity: 0.5 }}
+        />
+      )}
 
-        {/* ── Layer 2: Legs ── */}
-        {/* Left leg */}
-        <rect x="27" y="78" width="18" height="26" rx="9"
-          fill={pantsDef ? pantsDef.svgColor : cfg.skinColor}
-          stroke={pantsDef ? pantsDef.accentColor : cfg.outline}
-          strokeWidth="1.2" />
-        {/* Right leg */}
-        <rect x="55" y="78" width="18" height="26" rx="9"
-          fill={pantsDef ? pantsDef.svgColor : cfg.skinColor}
-          stroke={pantsDef ? pantsDef.accentColor : cfg.outline}
-          strokeWidth="1.2" />
-        {/* Pants highlight */}
-        {pantsDef && (
-          <>
-            <rect x="29" y="80" width="6" height="12" rx="4" fill="#fff" opacity="0.15" />
-            <rect x="57" y="80" width="6" height="12" rx="4" fill="#fff" opacity="0.15" />
-          </>
-        )}
+      {/* ── VIGNETTE OVERLAY ── */}
+      <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] pointer-events-none z-30" />
+      <div className="absolute inset-0 border border-white/10 rounded-[32px] pointer-events-none z-30" />
 
-        {/* ── Layer 2b: Boots ── */}
-        {bootsDef ? (
-          <>
-            <rect x="24" y="96" width="22" height="10" rx="5"
-              fill={bootsDef.svgColor} stroke={bootsDef.accentColor} strokeWidth="1.2" />
-            <rect x="54" y="96" width="22" height="10" rx="5"
-              fill={bootsDef.svgColor} stroke={bootsDef.accentColor} strokeWidth="1.2" />
-            {/* Boot highlight */}
-            <rect x="26" y="98" width="8" height="4" rx="2" fill="#fff" opacity="0.2" />
-            <rect x="56" y="98" width="8" height="4" rx="2" fill="#fff" opacity="0.2" />
-          </>
-        ) : (
-          <>
-            <rect x="27" y="99" width="18" height="6" rx="4" fill="#78350f" />
-            <rect x="55" y="99" width="18" height="6" rx="4" fill="#78350f" />
-          </>
-        )}
-
-        {/* ── Layer 3: Body / Armor ── */}
-        <rect x="20" y="46" width="60" height="36" rx="14"
-          fill="url(#body-grad)"
-          stroke={armorDef ? armorDef.accentColor : cfg.outline}
-          strokeWidth="1.5" />
-        {/* Body highlight */}
-        <rect x="28" y="50" width="20" height="10" rx="6"
-          fill="#fff" opacity="0.12" />
-        {/* Armor detail lines */}
-        {armorDef && (
-          <g opacity="0.5">
-            <line x1="38" y1="50" x2="38" y2="80" stroke={armorDef.accentColor} strokeWidth="0.8" />
-            <line x1="62" y1="50" x2="62" y2="80" stroke={armorDef.accentColor} strokeWidth="0.8" />
-            <line x1="20" y1="63" x2="80" y2="63" stroke={armorDef.accentColor} strokeWidth="0.6" />
-          </g>
-        )}
-        {/* Class emblem on chest */}
-        <text x="50" y="68" textAnchor="middle" fontSize="13" style={{ userSelect: "none" }}>
-          {characterClass === "WARRIOR" ? "⚔" : characterClass === "MAGE" ? "✦" : "✚"}
-        </text>
-
-        {/* ── Layer 3b: Belt ── */}
-        <rect x="20" y="77" width="60" height="7" rx="2" fill="#78350f" opacity="0.8" />
-        <rect x="44" y="76" width="12" height="9" rx="2" fill="#fbbf24" />
-        {/* Belt buckle detail */}
-        <rect x="47" y="78" width="6" height="5" rx="1" fill="#92400e" />
-
-        {/* ── Layer 4: Right arm (in front of body) ── */}
-        <rect x="76" y="48" width="16" height="24" rx="8"
-          fill="url(#skin-grad)" stroke={cfg.outline} strokeWidth="1.2" />
-        <rect x="78" y="50" width="5" height="10" rx="3"
-          fill="#fff" opacity="0.15" />
-
-        {/* ── Layer 4b: Weapon (right hand) ── */}
-        {weaponDef && (
-          <motion.g
-            animate={isAnimating ? { rotate: [-10, 10, -5] } : {}}
-            transition={{ duration: 0.4 }}
-            style={{ transformOrigin: "88px 50px", filter: "url(#nb-shadow)" }}
-          >
-            {["bow", "wand", "staff", "holy-staff"].includes(eq.weapon ?? "") ? (
-              /* Staff / wand — vertical */
-              <>
-                <rect x="87" y="14" width="3.5" height="38" rx="1.5" fill={weaponDef.svgColor} />
-                <circle cx="88.5" cy="12" r="5.5"
-                  fill={weaponDef.svgColor} stroke={weaponDef.accentColor} strokeWidth="1.2" />
-                {/* Staff glow */}
-                <circle cx="88.5" cy="12" r="3"
-                  fill={weaponDef.accentColor} opacity="0.8" />
-              </>
-            ) : (
-              /* Sword / axe / dagger */
-              <>
-                <rect x="87" y="52" width="3" height="12" rx="1" fill="#78350f" />
-                <rect x="83" y="52" width="11" height="3.5" rx="1.5" fill={weaponDef.accentColor} />
-                <path
-                  d="M 86 18 L 92 36 L 91 52 L 85 52 L 84 36 Z"
-                  fill={weaponDef.svgColor}
-                  stroke={weaponDef.accentColor}
-                  strokeWidth="0.8"
-                />
-              </>
-            )}
-          </motion.g>
-        )}
-
-        {/* ── Layer 5: Head (Nano Banana big round head) ── */}
-        {/* Head base — big & round */}
-        <circle cx="50" cy="28" r="22"
-          fill="url(#skin-grad)"
-          stroke={cfg.outline} strokeWidth="1.5"
-          style={{ filter: "url(#nb-shadow)" }} />
-        {/* Head highlight */}
-        <ellipse cx="43" cy="20" rx="8" ry="6"
-          fill="#fff" opacity="0.18" />
-
-        {/* Cheeks */}
-        <circle cx="33" cy="32" r="5" fill="#fca5a5" opacity="0.4" />
-        <circle cx="67" cy="32" r="5" fill="#fca5a5" opacity="0.4" />
-
-        {/* Eyes — big cute eyes */}
-        <circle cx="42" cy="26" r="5" fill="#1c1917" />
-        <circle cx="58" cy="26" r="5" fill="#1c1917" />
-        {/* Eye shine */}
-        <circle cx="43.5" cy="24" r="2" fill="#fff" opacity="0.9" />
-        <circle cx="59.5" cy="24" r="2" fill="#fff" opacity="0.9" />
-        <circle cx="46" cy="27.5" r="1" fill="#fff" opacity="0.5" />
-        <circle cx="62" cy="27.5" r="1" fill="#fff" opacity="0.5" />
-
-        {/* Nose */}
-        <path d="M 48 30 Q 50 33 52 30" stroke={cfg.outline} strokeWidth="1" fill="none" strokeLinecap="round" />
-
-        {/* Mouth — cute smile */}
-        <path d="M 42 36 Q 50 42 58 36" stroke="#1c1917" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-
-        {/* Hair */}
-        {!helmetDef && (
-          <g>
-            {/* Hair base */}
-            <path
-              d={`M 28 22 Q 28 4 50 3 Q 72 4 72 22 Q 68 10 50 8 Q 32 10 28 22 Z`}
-              fill={cfg.hairColor} opacity="0.95"
-            />
-            {/* Hair side tufts */}
-            <path d="M 28 20 Q 24 16 26 10 Q 30 8 32 14 Z" fill={cfg.hairColor} />
-            <path d="M 72 20 Q 76 16 74 10 Q 70 8 68 14 Z" fill={cfg.hairColor} />
-          </g>
-        )}
-
-        {/* ── Layer 6: Helmet ── */}
-        {helmetDef && (
-          <g style={{ filter: "url(#nb-shadow)", transition: "opacity 0.3s" }}>
-            {eq.helmet === "crown" ? (
-              <>
-                <path d="M 32 20 L 32 8 L 40 15 L 50 5 L 60 15 L 68 8 L 68 20 Z"
-                  fill={helmetDef.svgColor} stroke={helmetDef.accentColor} strokeWidth="1.2" />
-                <rect x="32" y="18" width="36" height="6" rx="2"
-                  fill={helmetDef.svgColor} stroke={helmetDef.accentColor} strokeWidth="0.8" />
-                <circle cx="50" cy="8" r="3" fill="#dc2626" />
-                <circle cx="36" cy="13" r="2" fill="#fbbf24" opacity="0.8" />
-                <circle cx="64" cy="13" r="2" fill="#fbbf24" opacity="0.8" />
-              </>
-            ) : eq.helmet === "wizard-hat" ? (
-              <>
-                <path d="M 50 2 L 62 22 L 38 22 Z"
-                  fill={helmetDef.svgColor} stroke={helmetDef.accentColor} strokeWidth="1.2" />
-                <ellipse cx="50" cy="22" rx="16" ry="4"
-                  fill={helmetDef.svgColor} stroke={helmetDef.accentColor} strokeWidth="1.2" />
-                <path d="M 46 14 Q 50 10 54 14" stroke={helmetDef.accentColor} strokeWidth="1" fill="none" />
-              </>
-            ) : (
-              <>
-                <path d="M 28 26 Q 28 4 50 3 Q 72 4 72 26 L 72 32 L 28 32 Z"
-                  fill={helmetDef.svgColor} stroke={helmetDef.accentColor} strokeWidth="1.5" />
-                {/* Visor slit */}
-                <rect x="33" y="24" width="34" height="4" rx="2"
-                  fill={helmetDef.accentColor} opacity="0.6" />
-                {/* Crest */}
-                <rect x="46" y="1" width="8" height="8" rx="2" fill={helmetDef.accentColor} />
-                {/* Helmet highlight */}
-                <rect x="35" y="8" width="14" height="8" rx="4" fill="#fff" opacity="0.15" />
-              </>
-            )}
-          </g>
-        )}
-
-        {/* ── Layer 7: Earrings ── */}
-        {earring1Def && (
-          <motion.g
-            animate={{ rotate: [-5, 5, -5] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            style={{ transformOrigin: "27px 28px" }}
-          >
-            {/* Left earring */}
-            <circle cx="27" cy="28" r="3.5"
-              fill={earring1Def.svgColor}
-              stroke={earring1Def.accentColor} strokeWidth="1"
-              style={{ filter: "url(#nb-glow)" }} />
-            <circle cx="27" cy="33" r="2"
-              fill={earring1Def.accentColor} opacity="0.9" />
-            <line x1="27" y1="30" x2="27" y2="33" stroke={earring1Def.accentColor} strokeWidth="1" />
-          </motion.g>
-        )}
-        {earring2Def && (
-          <motion.g
-            animate={{ rotate: [5, -5, 5] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            style={{ transformOrigin: "73px 28px" }}
-          >
-            {/* Right earring */}
-            <circle cx="73" cy="28" r="3.5"
-              fill={earring2Def.svgColor}
-              stroke={earring2Def.accentColor} strokeWidth="1"
-              style={{ filter: "url(#nb-glow)" }} />
-            <circle cx="73" cy="33" r="2"
-              fill={earring2Def.accentColor} opacity="0.9" />
-            <line x1="73" y1="30" x2="73" y2="33" stroke={earring2Def.accentColor} strokeWidth="1" />
-          </motion.g>
-        )}
-
-        {/* ── Layer 8: Pet (floating right side) ── */}
-        {petDef && (
-          <motion.text
-            x="76" y="48"
-            fontSize="18"
-            animate={{ y: [48, 43, 48] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-            style={{ userSelect: "none", filter: "url(#nb-shadow)" }}
-          >
-            {petDef.emoji}
-          </motion.text>
-        )}
-
-      </svg>
+      {/* ── ACTIVE GEAR ICONS (Miniature Display) ── */}
+      <div className="absolute right-2 top-2 z-40 flex flex-col gap-1.5 opacity-80">
+        {[helmetDef, armorDef, weaponDef].filter(Boolean).map((gear, idx) => (
+          <div key={idx} className="w-6 h-6 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-[10px] shadow-[0_0_10px_rgba(0,0,0,1)]"
+               style={{ borderLeftColor: gear!.accentColor }}>
+            {gear!.emoji}
+          </div>
+        ))}
+      </div>
 
       {/* Level badge */}
       <div
-        className="absolute -bottom-1 -right-1 rounded-full flex items-center justify-center font-black text-xs"
+        className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-md flex items-center justify-center font-black tracking-widest z-40 shadow-[0_4px_10px_rgba(0,0,0,0.8)]"
         style={{
-          width: Math.max(20, px * 0.15),
-          height: Math.max(20, px * 0.15),
-          fontSize: Math.max(9, px * 0.09),
-          backgroundColor: cfg.primary,
-          color: "#fff",
-          border: `2px solid ${cfg.outline}`,
-          boxShadow: `0 0 8px ${cfg.primary}80`,
+          padding: "2px 8px",
+          backgroundColor: "#111",
+          color: cfg.primary,
+          border: `1px solid ${cfg.outline}`,
+          fontSize: Math.max(10, px * 0.08),
         }}
       >
-        {level}
+        L.{level}
       </div>
     </motion.div>
   )
