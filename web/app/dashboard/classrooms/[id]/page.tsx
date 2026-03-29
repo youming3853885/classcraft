@@ -63,12 +63,7 @@ export default async function ClassroomPage({ params }: { params: Promise<{ id: 
           </div>
           <div className="flex items-center gap-3">
             {isTeacher && classroom.inviteCode && (
-              <>
-                <span className="hidden sm:inline text-xs font-mono border border-[#CA8A04]/30 bg-[#CA8A04]/10 px-3 py-1.5 rounded-lg text-[#CA8A04]">
-                  🔑 {classroom.inviteCode}
-                </span>
-                <InviteCodeButton code={classroom.inviteCode} />
-              </>
+              <InviteCodeButton code={classroom.inviteCode} />
             )}
             <SignOutButton />
           </div>

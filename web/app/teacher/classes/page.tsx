@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { getServerAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { InviteCodeButton } from "@/components/invite-code-button";
 
 export default async function TeacherClassesPage() {
   const session = await getServerAuthSession();
@@ -114,9 +115,9 @@ export default async function TeacherClassesPage() {
                 </div>
 
                 {classroom.inviteCode && (
-                  <div className="mt-3 rounded-lg border border-[#CA8A04]/20 bg-[#CA8A04]/5 px-3 py-2 text-center">
-                    <p className="text-xs text-white/25 mb-0.5">邀請碼</p>
-                    <p className="font-mono text-sm font-black text-[#CA8A04]">{classroom.inviteCode}</p>
+                  <div className="mt-4 border-t border-white/5 pt-4 flex flex-col items-center">
+                    <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2 font-bold">快速複製邀請碼</p>
+                    <InviteCodeButton code={classroom.inviteCode} />
                   </div>
                 )}
               </div>

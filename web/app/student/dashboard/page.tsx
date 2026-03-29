@@ -5,6 +5,7 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
 import { CharacterAvatar } from "@/components/game/character-avatar";
 import { getServerAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { JoinPortalForm } from "@/components/student/join-portal-form";
 
 const CornerStuds = () => (
   <>
@@ -325,10 +326,12 @@ export default async function StudentDashboardPage() {
                 <div className="bg-[#0A0907] border border-[#000] p-12">
                   <div className="text-5xl opacity-40 mb-6 drop-shadow-[0_2px_5px_black]">🗺</div>
                   <p className="font-bold text-lg text-[#A88B53]">無可探索之界域</p>
-                  <p className="text-sm text-[#D8CBB6]/60 mt-3 font-mono">尋求導師的邀請秘文以開啟傳送門</p>
+                  <p className="text-sm text-[#D8CBB6]/60 mt-3 font-mono">請從下方輸入導師的邀請秘文以開啟傳送門</p>
                 </div>
              </div>
            )}
+
+           <JoinPortalForm />
         </section>
 
       </div>

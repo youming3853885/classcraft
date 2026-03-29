@@ -5,18 +5,16 @@ export function InviteCodeButton({ code }: { code: string | null }) {
 
   async function copyInviteCode() {
     await navigator.clipboard.writeText(displayCode);
-    alert("邀請碼已複製！");
+    alert("已複製: " + displayCode);
   }
 
   return (
     <button
       onClick={copyInviteCode}
-      className="flex items-center gap-2 rounded-lg bg-zinc-800 border border-zinc-600 px-3 py-1.5 text-sm font-medium text-zinc-300 hover:bg-zinc-700 hover:text-white transition"
+      title="點擊複製邀請碼"
+      className="inline-flex items-center justify-center rounded-xl bg-purple-900/30 border-2 border-purple-500/50 px-5 py-2 hover:bg-purple-900/50 hover:border-purple-400 transition-all shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:scale-105 active:scale-95 group"
     >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-      </svg>
-      複製
+      <span className="text-2xl font-black text-purple-300 group-hover:text-white font-mono tracking-[0.2em] uppercase origin-center">{displayCode}</span>
     </button>
   );
 }
