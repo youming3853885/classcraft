@@ -26,13 +26,33 @@ export default function TeacherRegisterPage() {
   const [password, setPassword] = useState("");
   const [savedEmail, setSavedEmail] = useState("");
   const [savedPassword, setSavedPassword] = useState("");
+  const [googleUser, setGoogleUser] = useState<any>(null);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !email || !password) return setError("請填寫所有必填欄位");
-    if (password.length < 6) return setError("密碼至少需要 6 個字元");
+    if (!name.trim()) return setError("請輸入您的顯示名稱");
+    if (!googleUser) {
+      if (!email || !password) return setError("請填寫所有必填欄位");
+      if (password.length < 6) return setError("密碼至少需要 6 個字元");
+    }
     setLoading(true); setError("");
+
     try {
+      if (googleUser) {
+        // Two-step Google Registration (Finalizing)
+        const idToken = await googleUser.getIdToken();
+        const res = await signIn("credentials", { 
+          idToken, 
+          action: "register", 
+          name: name.trim(), 
+          role: "TEACHER", 
+          redirect: false, 
+          callbackUrl: "/teacher/dashboard" 
+        });
+        if (res?.error) setError("建立失敗：您可能已經註冊過，請直接登入");
+        else if (res?.url) window.location.href = res.url as string;
+        return;
+      }
       const uc = await createUserWithEmailAndPassword(auth, email.trim(), password);
       try { await updateProfile(uc.user, { displayName: name.trim() }); } catch {}
       await sendEmailVerification(uc.user);
@@ -48,10 +68,8 @@ export default function TeacherRegisterPage() {
     setLoading(true); setError("");
     try {
       const uc = await signInWithPopup(auth, new GoogleAuthProvider());
-      const idToken = await uc.user.getIdToken();
-      const res = await signIn("credentials", { idToken, action: "register", name: uc.user.displayName || "", role: "TEACHER", redirect: false, callbackUrl: "/teacher/dashboard" });
-      if (res?.error) setError("Google 帳號同步失敗");
-      else if (res?.url) window.location.href = res.url as string;
+      setGoogleUser(uc.user);
+      if (uc.user.displayName) setName(uc.user.displayName);
     } catch (err: any) {
       if (err.code !== "auth/popup-closed-by-user") setError(err.message || "Google 登入失敗");
     } finally { setLoading(false); }
@@ -152,20 +170,34 @@ export default function TeacherRegisterPage() {
               <p className="text-xs text-white/40 mt-1 tracking-widest uppercase">建立您的教師帳號</p>
             </div>
 
-            <GoogleButton onClick={handleGoogle} disabled={loading}>
-              使用 Google 帳號以老師身份加入
-            </GoogleButton>
+            {!googleUser && (
+              <>
+                <GoogleButton onClick={handleGoogle} disabled={loading}>
+                  使用 Google 帳號以老師身份加入
+                </GoogleButton>
 
-            <div className="flex items-center gap-3">
-              <div className="flex-1 border-t border-purple-500/20" />
-              <span className="text-xs text-white/30 tracking-widest uppercase">或填寫資料</span>
-              <div className="flex-1 border-t border-purple-500/20" />
-            </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 border-t border-purple-500/20" />
+                  <span className="text-xs text-white/30 tracking-widest uppercase">或填寫資料</span>
+                  <div className="flex-1 border-t border-purple-500/20" />
+                </div>
+              </>
+            )}
 
             <form onSubmit={handleRegister} className="space-y-4">
               <RPGInput label="顯示名稱" required type="text" value={name} onChange={e => setName(e.target.value)} placeholder="例如：張老師" accentColor="#7C3AED" />
-              <RPGInput label="電子郵件" required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" accentColor="#7C3AED" />
-              <RPGInput label="密碼" required type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="設定密碼（至少 6 碼）" accentColor="#7C3AED" />
+              
+              {googleUser ? (
+                <div className="rounded-xl border border-purple-500/50 bg-purple-500/10 p-4">
+                  <p className="text-sm font-bold text-purple-400 mb-1">✅ 已綁定 Google 帳號</p>
+                  <p className="text-xs text-white/50">{googleUser.email}</p>
+                </div>
+              ) : (
+                <>
+                  <RPGInput label="電子郵件" required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" accentColor="#7C3AED" />
+                  <RPGInput label="密碼" required type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="設定密碼（至少 6 碼）" accentColor="#7C3AED" />
+                </>
+              )}
               {error && <RPGAlert type="error" message={error} />}
               <RPGButton type="submit" variant="purple" disabled={loading}>
                 {loading ? "建立中..." : "✦ 建立教師帳號"}
