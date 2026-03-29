@@ -65,8 +65,9 @@ export default function SignInPage() {
       const idToken = await uc.user.getIdToken();
       const res = await signIn("credentials", { idToken, action: "login", redirect: false, callbackUrl: "/dashboard" });
       if (res?.error) {
-        if (res.error === "NOT_REGISTERED" || res.error.includes("NOT_REGISTERED")) {
-          // 未註冊使用者，自動導向角色選擇畫面
+        // 在 Vercel production 環境下，自訂的錯誤字串可能會被 NextAuth 強制遮蔽為 CredentialsSignin。
+        // 但因為 Firebase 已經驗證過他的 Google 身分了，只要能在 credentials 拋出錯誤，就100%代表資料庫查無此人（未註冊）。
+        if (res.error === "NOT_REGISTERED" || res.error.includes("NOT_REGISTERED") || res.error === "CredentialsSignin") {
           window.location.href = "/register";
           return;
         }
