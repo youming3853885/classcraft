@@ -21,7 +21,7 @@ export default async function StudentDashboardPage() {
   });
 
   const firstMembership = memberships[0];
-  let characterClass: "WARRIOR" | "MAGE" | "HEALER" = "WARRIOR";
+  let characterClass: "WARRIOR" | "MAGE" | "HEALER" = ((dbUser as any).characterClass as any) || "WARRIOR";
   let equipment = {};
   let currentHp = 100, maxHp = 100, currentMp = 50, maxMp = 50;
 

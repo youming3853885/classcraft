@@ -118,13 +118,9 @@ export const authOptions: NextAuthOptions = {
                 name: credentials.name || email.split('@')[0],
                 role,
                 image: decoded.picture || null,
+                characterClass: role === "STUDENT" ? credentials.characterClass : null,
               },
             });
-
-            // If Student registration logic... (we can keep it simple or expand)
-            if (role === "STUDENT" && credentials.characterClass) {
-               // ... Optional: add starting stats or character class logic here
-            }
           } else {
             // Standard Login - User must exist! No auto-provisioning on simple login
             if (!user) {
