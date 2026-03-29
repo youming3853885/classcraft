@@ -1,0 +1,321 @@
+@import "tailwindcss";
+
+/* Smooth scroll for anchor links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Baloo 2 RPG Font (from CSS variable) ── */
+:root {
+  --font-baloo: "Baloo 2", "Exo 2", sans-serif;
+}
+
+:root {
+  /* CodeCombat Style - Fantasy RPG Theme */
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-card: #0f3460;
+  --bg-dark: #0a0a1a;
+
+  /* Earthy fantasy colors */
+  --accent-gold: #f5a623;
+  --accent-orange: #e67e22;
+  --accent-brown: #8b4513;
+  --accent-cream: #f5deb3;
+  --accent-wood: #654321;
+
+  /* RPG colors */
+  --hp-red: #e74c3c;
+  --mp-blue: #3498db;
+  --xp-purple: #9b59b6;
+  --coin-gold: #f1c40f;
+
+  /* Text colors */
+  --text-primary: #f5f5dc;
+  --text-secondary: #d4c4a8;
+  --text-muted: #8b8b8b;
+  --text-gold: #ffd700;
+
+  /* Border colors */
+  --border-light: rgba(245, 166, 35, 0.3);
+  --border-gold: #f5a623;
+
+  /* Shadows */
+  --glow-gold: 0 0 20px rgba(245, 166, 35, 0.5);
+  --shadow-wood: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+@theme inline {
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --font-sans: 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', sans-serif;
+}
+
+/* Base styles - applied globally */
+body {
+  min-height: 100vh;
+}
+
+/* ═══════════════════════════════════════
+   RPG GAME THEME - scoped to [data-page="game"]
+   Only applies inside game pages, NOT on landing page
+   ═══════════════════════════════════════ */
+[data-page="game"] {
+  background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-primary) 50%, var(--bg-secondary) 100%);
+  color: var(--text-primary);
+  font-family: 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', sans-serif;
+}
+
+/* Headings - Medieval style - GAME ONLY */
+[data-page="game"] h1,
+[data-page="game"] h2,
+[data-page="game"] h3,
+[data-page="game"] h4,
+[data-page="game"] h5,
+[data-page="game"] h6 {
+  color: var(--accent-gold);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  letter-spacing: 1px;
+}
+
+/* Links - GAME ONLY */
+[data-page="game"] a {
+  color: var(--accent-gold);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+[data-page="game"] a:hover {
+  color: var(--accent-cream);
+  text-shadow: 0 0 10px var(--glow-gold);
+}
+
+/* Buttons - Wood/Gold style - GAME ONLY */
+[data-page="game"] button,
+[data-page="game"] .btn {
+  background: linear-gradient(180deg, #8b5a2b 0%, #654321 100%);
+  border: 2px solid var(--accent-gold);
+  color: var(--text-gold);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-wood), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+[data-page="game"] button:hover,
+[data-page="game"] .btn:hover {
+  background: linear-gradient(180deg, #a0522d 0%, #8b4513 100%);
+  box-shadow: var(--glow-gold), var(--shadow-wood);
+  transform: translateY(-2px);
+}
+
+[data-page="game"] button:active,
+[data-page="game"] .btn:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-wood);
+}
+
+/* Primary buttons */
+.btn-primary {
+  background: linear-gradient(180deg, #f5a623 0%, #e67e22 100%);
+  border-color: #ffd700;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(180deg, #ffb733 0%, #f5a623 100%);
+}
+
+/* Cards - Parchment style - GAME ONLY */
+[data-page="game"] .card,
+[data-page="game"] .rounded-xl,
+[data-page="game"] .rounded-2xl {
+  background: linear-gradient(145deg, rgba(30, 30, 60, 0.9), rgba(15, 52, 96, 0.8));
+  border: 2px solid var(--border-gold);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(245, 166, 35, 0.1);
+}
+
+/* Inputs */
+input, textarea, select {
+  background: rgba(10, 10, 26, 0.8);
+  border: 2px solid var(--border-light);
+  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 15px rgba(245, 166, 35, 0.3);
+  outline: none;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Progress bars - RPG style */
+.progress-bar, .h-3, .h-4 {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-bar > div, .h-3 > div, .h-4 > div {
+  background: linear-gradient(90deg, var(--accent-gold), var(--accent-orange));
+  box-shadow: 0 0 10px var(--glow-gold);
+}
+
+/* Health bar - Red */
+.hp-bar > div {
+  background: linear-gradient(90deg, #e74c3c, #c0392b) !important;
+  box-shadow: 0 0 10px rgba(231, 76, 60, 0.5) !important;
+}
+
+/* XP bar - Purple */
+.xp-bar > div {
+  background: linear-gradient(90deg, #9b59b6, #8e44ad) !important;
+  box-shadow: 0 0 10px rgba(155, 89, 182, 0.5) !important;
+}
+
+/* Coins - Gold */
+.coin-text {
+  color: var(--coin-gold) !important;
+  text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--accent-gold), var(--accent-brown));
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--accent-orange), var(--accent-gold));
+}
+
+/* Selection */
+::selection {
+  background: var(--accent-gold);
+  color: var(--bg-dark);
+}
+
+/* Animations */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(245, 166, 35, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(245, 166, 35, 0.6); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.glow-animation {
+  animation: glow-pulse 2s infinite;
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(245, 166, 35, 0.3), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+}
+
+/* Table styles */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th {
+  background: linear-gradient(180deg, #1a1a2e, #0f3460);
+  color: var(--accent-gold);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 2px solid var(--accent-gold);
+}
+
+td {
+  border-bottom: 1px solid var(--border-light);
+}
+
+tr:hover td {
+  background: rgba(245, 166, 35, 0.1);
+}
+
+/* Badges */
+.badge {
+  background: linear-gradient(180deg, var(--accent-gold), var(--accent-orange));
+  color: var(--bg-dark);
+  font-weight: bold;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.badge-purple {
+  background: linear-gradient(180deg, #9b59b6, #8e44ad);
+}
+
+.badge-red {
+  background: linear-gradient(180deg, #e74c3c, #c0392b);
+}
+
+.badge-green {
+  background: linear-gradient(180deg, #2ecc71, #27ae60);
+}
+
+/* Modal overlay */
+.modal-overlay {
+  background: rgba(10, 10, 26, 0.9);
+  backdrop-filter: blur(5px);
+}
+
+/* Tooltips */
+.tooltip {
+  background: linear-gradient(180deg, var(--bg-card), var(--bg-secondary));
+  border: 1px solid var(--accent-gold);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  box-shadow: var(--shadow-wood);
+}
+
+/* Grid patterns */
+.grid-pattern {
+  background-image:
+    linear-gradient(rgba(245, 166, 35, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 166, 35, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Stone texture background */
+.stone-bg {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(0, 0, 0, 0.1) 10px,
+      rgba(0, 0, 0, 0.1) 20px
+    ),
+    linear-gradient(180deg, #2c2c2c, #1a1a1a);
+}
