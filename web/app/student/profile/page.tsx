@@ -99,7 +99,7 @@ export default async function StudentProfilePage() {
   const classCfg = CHARACTER_CLASSES[characterClass]
 
   return (
-    <div className="min-h-screen bg-[#0C0A09] text-white" style={{ fontFamily: "'Exo 2', sans-serif" }}>
+    <div className="min-h-screen bg-[#0A0907] text-[#D8CBB6] font-serif" style={{ fontFamily: "'Cinzel', serif" }}>
       {/* CRT scanline */}
       <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.025]"
         style={{ backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,1) 2px,rgba(255,255,255,1) 3px)" }} />
@@ -142,9 +142,11 @@ export default async function StudentProfilePage() {
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-8 space-y-6">
 
         {/* Hero banner */}
-        <div className={`relative rounded-2xl border ${classCfg.border} bg-gradient-to-r ${classCfg.bg} p-6 overflow-hidden`}>
-          <div className="absolute top-4 left-4 w-5 h-5 border-t-2 border-l-2 border-[#CA8A04]/40 rounded-tl-md" />
-          <div className="absolute top-4 right-4 w-5 h-5 border-t-2 border-r-2 border-[#CA8A04]/40 rounded-tr-md" />
+        <div className={`relative rpg-wood p-8 shadow-2xl`}>
+          <div className="rpg-rivet top-2 left-2" />
+          <div className="rpg-rivet top-2 right-2" />
+          <div className="rpg-rivet bottom-2 left-2" />
+          <div className="rpg-rivet bottom-2 right-2" />
           <div className="flex items-start gap-5">
             {/* Avatar pill */}
             <div className="flex-shrink-0">
@@ -173,16 +175,16 @@ export default async function StudentProfilePage() {
               </div>
             </div>
             {/* Stats pill grid */}
-            <div className="hidden sm:grid grid-cols-2 gap-2 flex-shrink-0">
+            <div className="hidden sm:grid grid-cols-2 gap-3 flex-shrink-0">
               {[
-                { v: `${currentHp}/${maxHp}`, l: "HP", c: "text-red-400" },
-                { v: `${currentMp}/${maxMp}`, l: "MP", c: "text-blue-400" },
-                { v: totalCoins,              l: "金幣", c: "text-[#CA8A04]" },
-                { v: completedQuests,         l: "任務", c: "text-green-400" },
+                { v: `${currentHp}/${maxHp}`, l: "HP", c: "text-red-700" },
+                { v: `${currentMp}/${maxMp}`, l: "MP", c: "text-blue-700" },
+                { v: totalCoins,              l: "金幣", c: "text-[#8b4513]" },
+                { v: completedQuests,         l: "任務", c: "text-green-700" },
               ].map((s, i) => (
-                <div key={i} className="rounded-xl bg-black/30 px-4 py-2 text-center">
-                  <p className={`text-lg font-black ${s.c}`}>{s.v}</p>
-                  <p className="text-[10px] text-white/25">{s.l}</p>
+                <div key={i} className="rpg-parchment px-4 py-2 text-center min-w-[70px] scale-90">
+                  <p className={`text-xl font-black ${s.c}`}>{s.v}</p>
+                  <p className="text-[10px] text-[#5d4037] font-black">{s.l}</p>
                 </div>
               ))}
             </div>

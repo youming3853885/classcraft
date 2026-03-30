@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { CharacterAvatar, EQUIPMENT_REGISTRY, RARITY_COLORS, type CharacterEquipment, type EquipmentSlot, type EquipmentItemDef } from "@/components/game/character-avatar"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -19,55 +20,38 @@ export interface PaperDollEditorProps {
   playerName?: string
 }
 
-// ─── Slot Layout ─────────────────────────────────────────────────────────────
-// 4 rows × 3 cols, character in center of row 2
-//
-//  [earring1] [helmet]   [earring2]
-//  [offhand]  CHARACTER  [weapon]
-//  [armor]    [guardian] [pet]
-//  [pants]    [boots]    [—]
-
-type SlotOrChar = EquipmentSlot | "CHARACTER" | null
-
-const SLOT_GRID: SlotOrChar[] = [
-  "earring1",  "helmet",    "earring2",
-  "offhand",   "CHARACTER", "weapon",
-  "armor",     "guardian",  "pet",
-  "pants",     "boots",     null,
-]
-
 const SLOT_LABELS: Record<EquipmentSlot, string> = {
-  helmet:    "頭",
+  helmet:    "頭部",
   armor:     "身甲",
-  pants:     "褲子",
-  guardian:  "守護靈",
-  boots:     "鞋子",
+  pants:     "腿部",
+  guardian:  "守護",
+  boots:     "足部",
   pet:       "寵物",
   offhand:   "左手",
   weapon:    "右手",
-  earring1:  "耳環1",
-  earring2:  "耳環2",
-  // legacy aliases
-  cape:      "守護靈",
-  accessory: "耳環1",
+  earring1:  "飾品1",
+  earring2:  "飾品2",
+  // legacy
+  cape:      "守護",
+  accessory: "飾品1",
 }
 
-const SLOT_ICONS: Record<EquipmentSlot, string> = {
-  helmet:    "🪖",
-  armor:     "🛡",
-  pants:     "👖",
-  guardian:  "🧚",
-  boots:     "👢",
-  pet:       "🐾",
-  offhand:   "🗡",
-  weapon:    "⚔",
-  earring1:  "💎",
-  earring2:  "✨",
-  cape:      "🧚",
-  accessory: "💎",
+// Position mapping for floating slots around the character
+// Assuming a 320x400 central area for the avatar
+const SLOT_POSITIONS: Record<EquipmentSlot, string> = {
+  helmet:   "top-4 left-1/2 -translate-x-1/2",
+  earring1: "top-12 left-8 md:left-4",
+  earring2: "top-12 right-8 md:right-4",
+  offhand:  "top-1/2 -translate-y-12 left-4 md:-left-2",
+  weapon:   "top-1/2 -translate-y-12 right-4 md:-right-2",
+  armor:    "bottom-1/3 left-6 md:left-2",
+  guardian: "top-0 right-0", // Floating
+  pet:      "bottom-4 left-4",
+  pants:    "bottom-4 left-1/2 -translate-x-12",
+  boots:    "bottom-4 left-1/2 translate-x-1",
+  cape:     "top-0 right-0",
+  accessory: "top-12 left-4",
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export function PaperDollEditor({
   classroomId,
@@ -81,18 +65,17 @@ export function PaperDollEditor({
     initialEquipment as CharacterEquipment
   )
   const [hoveredSlot, setHoveredSlot] = useState<EquipmentSlot | null>(null)
-  const [selectedItem, setSelectedItem] = useState<{ key: string; def: EquipmentItemDef } | null>(null)
+  const [selectedItem, setSelectedItem] = useState<OwnedItemEntry | null>(null)
   const [activeTab, setActiveTab] = useState<EquipmentSlot | "all">("all")
   const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null)
 
-  // Build owned item list from registry
+  // Build owned item list
   const ownedItems: OwnedItemEntry[] = ownedItemKeys
     .filter(k => EQUIPMENT_REGISTRY[k])
     .map(k => ({ key: k, def: EQUIPMENT_REGISTRY[k] }))
 
-  const displayItems = ownedItems.length > 0
-    ? ownedItems
+  const displayItems = ownedItems.length > 0 
+    ? ownedItems 
     : Object.entries(EQUIPMENT_REGISTRY).map(([k, def]) => ({ key: k, def }))
 
   const filteredItems = activeTab === "all"
@@ -100,8 +83,6 @@ export function PaperDollEditor({
     : displayItems.filter(i => i.def.slot === activeTab)
 
   const isEquipped = (key: string) => Object.values(equipment).includes(key)
-
-  // ─── API Call ───────────────────────────────────────────────────────────────
 
   const equip = async (slot: EquipmentSlot, itemKey: string) => {
     setSaving(true)
@@ -114,361 +95,251 @@ export function PaperDollEditor({
       if (!res.ok) throw new Error(await res.text())
       const { equipment: newEq } = await res.json()
       setEquipment(newEq)
-      showToast(itemKey ? `✓ 已裝備 ${EQUIPMENT_REGISTRY[itemKey]?.name}` : `✓ 已卸除裝備`, "ok")
-    } catch {
-      showToast("✗ 操作失敗，請重試", "err")
+    } catch (err) {
+      console.error(err)
     } finally {
       setSaving(false)
     }
   }
 
-  const showToast = (msg: string, type: "ok" | "err") => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 2500)
-  }
-
   const handleSlotClick = (slot: EquipmentSlot) => {
-    const currentKey = (equipment as Record<string, string | null | undefined>)[slot]
+    const currentKey = (equipment as any)[slot]
     if (currentKey) {
       setSelectedItem({ key: currentKey, def: EQUIPMENT_REGISTRY[currentKey]! })
     }
     setHoveredSlot(slot)
   }
 
-  const handleItemClick = (entry: OwnedItemEntry) => {
-    setSelectedItem(entry)
-    setHoveredSlot(entry.def.slot)
-  }
-
-  const handleEquipSelected = () => {
-    if (!selectedItem) return
-    equip(selectedItem.def.slot, selectedItem.key)
-  }
-
-  const handleUnequip = () => {
-    const slot = selectedItem?.def.slot ?? hoveredSlot
-    if (!slot) return
-    equip(slot, "")
-    setSelectedItem(null)
-  }
-
-  const isSelectedEquipped = selectedItem ? isEquipped(selectedItem.key) : false
-
-  const tabs: Array<{ key: EquipmentSlot | "all"; label: string }> = [
-    { key: "all",      label: "全部" },
-    { key: "helmet",   label: "頭" },
-    { key: "armor",    label: "身甲" },
-    { key: "pants",    label: "褲子" },
-    { key: "guardian", label: "守護靈" },
-    { key: "boots",    label: "鞋子" },
-    { key: "offhand",  label: "左手" },
-    { key: "weapon",   label: "右手" },
-    { key: "earring1", label: "耳環1" },
-    { key: "earring2", label: "耳環2" },
-    { key: "pet",      label: "寵物" },
-  ]
-
-  // Resolve display slot key for legacy aliases
   const getEquippedKey = (slot: EquipmentSlot): string | null | undefined => {
-    const eq = equipment as Record<string, string | null | undefined>
+    const eq = equipment as any
     if (slot === "guardian") return eq.guardian ?? eq.cape
     if (slot === "earring1") return eq.earring1 ?? eq.accessory
     return eq[slot]
   }
 
+  const Rivets = () => (
+    <>
+      <div className="rpg-rivet top-2 left-2" />
+      <div className="rpg-rivet top-2 right-2" />
+      <div className="rpg-rivet bottom-2 left-2" />
+      <div className="rpg-rivet bottom-2 right-2" />
+    </>
+  )
+
+  const tabs: Array<{ key: EquipmentSlot | "all"; label: string }> = [
+    { key: "all",      label: "全部" },
+    { key: "helmet",   label: "頭" },
+    { key: "armor",    label: "裝" },
+    { key: "weapon",   label: "武" },
+    { key: "offhand",  label: "盾" },
+    { key: "pet",      label: "寵" },
+  ]
+
   return (
-    <div className="relative w-full rounded-2xl border border-[#CA8A04]/20 bg-[#0C0A09] overflow-hidden"
-      style={{ fontFamily: "'Exo 2', sans-serif" }}>
-      {/* CRT scanline overlay */}
-      <div className="pointer-events-none absolute inset-0 z-0 opacity-[0.02]"
-        style={{ backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,1) 2px,rgba(255,255,255,1) 3px)" }} />
-
-      {/* Corner runes */}
-      <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-[#CA8A04]/40 rounded-tl-md pointer-events-none z-20" />
-      <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-[#CA8A04]/40 rounded-tr-md pointer-events-none z-20" />
-      <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-[#CA8A04]/40 rounded-bl-md pointer-events-none z-20" />
-      <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-[#CA8A04]/40 rounded-br-md pointer-events-none z-20" />
-
-      {/* Header */}
-      <div className="relative z-10 flex items-center justify-between border-b border-[#CA8A04]/20 px-5 py-3">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-black text-[#CA8A04]" style={{ fontFamily: "'Baloo 2', cursive" }}>
-            🎭 裝備管理
-          </span>
-          {playerName && <span className="text-xs text-white/30">{playerName}</span>}
-        </div>
-        <div className="flex items-center gap-3">
-          {saving && (
-            <span className="text-xs text-[#CA8A04] animate-pulse font-bold">儲存中⋯</span>
-          )}
-          {toast && (
-            <span className={`text-xs font-bold px-3 py-1 rounded-lg ${toast.type === "ok" ? "text-green-400 bg-green-900/20 border border-green-500/30" : "text-red-400 bg-red-900/20 border border-red-500/30"}`}>
-              {toast.msg}
-            </span>
-          )}
-        </div>
+    <div className="relative w-full flex flex-col items-center gap-8 py-10 select-none">
+      
+      {/* ── HEADER PLATE ─────────────────────────────────────────────────── */}
+      <div className="relative z-20 rpg-wood px-12 py-3 mb-4 -rotate-1 shadow-2xl">
+         <Rivets />
+         <h2 className="text-3xl font-black text-[#f5a623] tracking-[0.2em] drop-shadow-[0_2px_2px_black]" style={{ fontFamily: "'Baloo 2', cursive" }}>
+           道具欄
+         </h2>
+         <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex gap-12">
+            <div className="rpg-chain" />
+            <div className="rpg-chain" />
+         </div>
       </div>
 
-      {/* Main 3-panel layout */}
-      <div className="relative z-10 flex min-h-[540px]">
+      {/* ── MAIN 3-PANEL STRETCH ────────────────────────────────────────── */}
+      <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-6 items-stretch">
+        
+        {/* PANEL 1: HERO ALTAR (LEFT) */}
+        <div className="flex-1 min-h-[500px] rpg-wood p-6 flex items-center justify-center relative rounded-sm shadow-black/80">
+          <Rivets />
+          
+          {/* Central Hero Shrine */}
+          <div className="relative w-full h-full flex items-center justify-center">
+             <CharacterAvatar 
+               characterClass={characterClass} 
+               equipment={equipment} 
+               size="3xl" 
+               noFrame={true} 
+               showAnimation={true}
+               level={level}
+             />
 
-        {/* ── Panel A: Doll + Slot Grid ─────────────────────────────── */}
-        <div className="flex-shrink-0 w-72 border-r border-[#CA8A04]/10 p-4 flex flex-col items-center gap-4">
-
-          {/* Slot grid — 4 rows × 3 cols */}
-          <div className="relative w-full">
-            <div className="grid grid-cols-3 gap-2">
-              {SLOT_GRID.map((slot, i) => {
-                if (slot === "CHARACTER") {
-                  return (
-                    <div key="char" className="flex items-center justify-center py-1">
-                      <div className="relative rounded-2xl border-2 border-[#CA8A04]/50 bg-gradient-to-b from-[#CA8A04]/10 to-[#CA8A04]/5 p-2 flex items-center justify-center
-                        shadow-[0_0_24px_rgba(202,138,4,0.15)]">
-                        {/* Corner runes on character frame */}
-                        <div className="absolute top-1 left-1 w-2 h-2 border-t border-l border-[#CA8A04]/60" />
-                        <div className="absolute top-1 right-1 w-2 h-2 border-t border-r border-[#CA8A04]/60" />
-                        <div className="absolute bottom-1 left-1 w-2 h-2 border-b border-l border-[#CA8A04]/60" />
-                        <div className="absolute bottom-1 right-1 w-2 h-2 border-b border-r border-[#CA8A04]/60" />
-                        <CharacterAvatar
-                          characterClass={characterClass}
-                          equipment={equipment}
-                          size="xl"
-                          showAnimation={true}
-                          level={level}
-                        />
-                      </div>
-                    </div>
-                  )
-                }
-                if (slot === null) return <div key={`empty-${i}`} />
-
-                const equipped = getEquippedKey(slot)
-                const def = equipped ? EQUIPMENT_REGISTRY[equipped] : null
-                const isActive = hoveredSlot === slot
+             {/* Dynamic Equipment Slots floating around */}
+             {(Object.keys(SLOT_LABELS) as EquipmentSlot[]).map((slot) => {
+                if (slot === "cape" || slot === "accessory") return null;
+                const equipped = getEquippedKey(slot);
+                const def = equipped ? EQUIPMENT_REGISTRY[equipped] : null;
+                const pos = SLOT_POSITIONS[slot];
+                const isActive = hoveredSlot === slot;
 
                 return (
                   <button
                     key={slot}
                     onClick={() => handleSlotClick(slot)}
-                    title={SLOT_LABELS[slot]}
-                    className={`relative flex flex-col items-center justify-center rounded-xl border p-1.5 transition-all cursor-pointer aspect-square
-                      ${isActive
-                        ? "border-[#CA8A04]/80 bg-[#CA8A04]/15 shadow-[0_0_14px_rgba(202,138,4,0.25)]"
-                        : def
-                        ? "border-white/25 bg-white/5 hover:border-[#CA8A04]/50"
-                        : "border-dashed border-white/10 bg-transparent hover:border-white/20"}`}
+                    className={`absolute ${pos} w-16 h-16 rounded-lg transition-all z-20 flex items-center justify-center
+                      ${isActive ? "rpg-slot-highlight" : "bg-black/40 border-2 border-white/10 hover:border-white/30"}
+                      ${def ? "shadow-lg" : "opacity-60"}
+                    `}
                   >
-                    {/* Corner rune */}
-                    <div className="absolute top-1 left-1 w-1.5 h-1.5 border-t border-l border-[#CA8A04]/25 rounded-tl-sm" />
                     {def ? (
-                      <>
-                        <span className="text-2xl leading-none">{def.emoji}</span>
-                        <span className="text-[8px] text-white/40 mt-0.5 leading-none truncate w-full text-center px-0.5">{def.name}</span>
-                        {/* Rarity dot */}
-                        <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: RARITY_COLORS[def.rarity] }} />
-                      </>
+                      <span className="text-3xl drop-shadow-md">{def.emoji}</span>
                     ) : (
-                      <>
-                        <span className="text-lg opacity-15">{SLOT_ICONS[slot]}</span>
-                        <span className="text-[8px] text-white/15 mt-0.5 leading-none">{SLOT_LABELS[slot]}</span>
-                      </>
+                      <span className="text-white/10 text-xs font-black uppercase tracking-tighter">{SLOT_LABELS[slot]}</span>
                     )}
+                    {/* Small tag */}
+                    <div className="absolute -bottom-1 -right-1 bg-black/80 text-[8px] px-1 text-white/40 border border-white/10 rounded-sm">
+                       {SLOT_LABELS[slot]}
+                    </div>
                   </button>
                 )
-              })}
-            </div>
+             })}
           </div>
 
-          {/* Equipped stat summary */}
-          <div className="w-full rounded-xl border border-white/5 bg-white/3 p-3 space-y-1.5 flex-1">
-            <p className="text-[10px] font-black text-[#CA8A04]/60 uppercase tracking-widest mb-2">裝備效果</p>
-            {Object.entries(equipment).filter(([, v]) => v).length === 0 ? (
-              <p className="text-xs text-white/20">尚未裝備任何物品</p>
-            ) : (
-              Object.entries(equipment)
-                .filter(([, v]) => v)
-                .map(([slot, key]) => {
-                  const def = EQUIPMENT_REGISTRY[key!]
-                  if (!def) return null
-                  return (
-                    <div key={slot} className="flex justify-between text-xs">
-                      <span className="text-white/30">{def.name}</span>
-                      <span className="font-bold" style={{ color: RARITY_COLORS[def.rarity] }}>{def.statLabel}</span>
+          {/* Floor Shadow */}
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-48 h-8 bg-black/40 blur-xl rounded-full" />
+        </div>
+
+        {/* PANEL 2: INVENTORY SCROLL (MIDDLE) */}
+        <div className="w-full lg:w-80 rpg-parchment p-5 flex flex-col shadow-2xl animate-paper-float">
+          <div className="flex justify-between items-center mb-4 border-b border-black/10 pb-2">
+            <h3 className="font-black text-lg tracking-tight">可使用的裝備</h3>
+            <div className="w-6 h-1 bg-[#8b4513]/20 rounded-full" />
+          </div>
+
+          {/* Filter Tabs on Paper */}
+          <div className="flex flex-wrap gap-1 mb-4">
+             {tabs.map(t => (
+               <button 
+                 key={t.key} 
+                 onClick={() => setActiveTab(t.key)}
+                 className={`text-[10px] font-black px-2 py-0.5 rounded-sm transition-colors ${activeTab === t.key ? "bg-[#8b4513] text-[#f4e4bc]" : "hover:bg-[#8b4513]/10"}`}
+               >
+                 {t.label}
+               </button>
+             ))}
+          </div>
+
+          <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+             {/* Equipping List */}
+             <div className="grid grid-cols-2 gap-3">
+               {filteredItems.map(({ key, def }) => (
+                 <button
+                   key={key}
+                   onClick={() => setSelectedItem({ key, def })}
+                   className={`relative p-3 rounded-md border-2 transition-all group flex flex-col items-center gap-1
+                     ${isEquipped(key) ? "bg-green-600/10 border-green-800/20" : "bg-black/5 border-transparent hover:border-[#8b4513]/30"}
+                     ${selectedItem?.key === key ? "ring-2 ring-[#8b4513] border-[#8b4513]" : ""}
+                   `}
+                 >
+                   <span className="text-4xl group-hover:scale-110 transition-transform">{def.emoji}</span>
+                   <span className="text-[10px] font-bold text-center leading-tight opacity-70">{def.name}</span>
+                   {isEquipped(key) && <div className="absolute top-1 right-1 text-[8px] bg-green-800 text-white px-1 rounded-sm">裝備中</div>}
+                 </button>
+               ))}
+             </div>
+          </div>
+          
+          <div className="mt-4 pt-2 border-t border-black/5 text-[10px] italic opacity-60 flex items-center gap-2">
+            <span className="text-[#8b4513]">ⓘ</span> 連點物品兩下可直接裝備
+          </div>
+        </div>
+
+        {/* PANEL 3: DETAIL SCROLL (RIGHT) */}
+        <div className="w-full lg:w-96 rpg-parchment p-8 flex flex-col shadow-inner relative">
+           {/* Chains for right panel */}
+           <div className="absolute -top-4 left-4 flex flex-col gap-1 z-0">
+              <div className="rpg-chain" />
+           </div>
+           <div className="absolute -top-4 right-4 flex flex-col gap-1 z-0">
+              <div className="rpg-chain" />
+           </div>
+
+           <AnimatePresence mode="wait">
+             {selectedItem ? (
+               <motion.div 
+                 key={selectedItem.key}
+                 initial={{ opacity: 0, x: 20 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 exit={{ opacity: 0, x: -20 }}
+                 className="flex-1 flex flex-col h-full"
+               >
+                 {/* Top Label */}
+                 <div className="text-center mb-6">
+                    <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-1">物品圖錄</div>
+                    <h4 className="text-2xl font-black text-[#5d4037]">{selectedItem.def.name}</h4>
+                    <div className="w-16 h-0.5 bg-[#8b4513]/20 mx-auto mt-2" />
+                 </div>
+
+                 {/* Center Icon */}
+                 <div className="flex-1 flex items-center justify-center relative my-8">
+                    <div className="w-48 h-48 rounded-full border-4 border-dashed border-[#8b4513]/10 flex items-center justify-center">
+                       <span className="text-8xl drop-shadow-2xl">{selectedItem.def.emoji}</span>
                     </div>
-                  )
-                })
-            )}
-          </div>
-        </div>
+                    {/* Rarity Seal */}
+                    <div className="absolute bottom-2 right-4 rotate-12 bg-white/40 border-2 border-[#8b4513]/20 rounded-full w-16 h-16 flex items-center justify-center shadow-lg backdrop-blur-sm px-2 text-center">
+                       <span className="text-[8px] font-black uppercase text-[#8b4513]" style={{ color: RARITY_COLORS[selectedItem.def.rarity] }}>
+                          {selectedItem.def.rarity}
+                       </span>
+                    </div>
+                 </div>
 
-        {/* ── Panel B: Item List ──────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col border-r border-[#CA8A04]/10 min-w-0">
-          {/* Tabs */}
-          <div className="flex overflow-x-auto gap-1 p-3 border-b border-white/5 scrollbar-none">
-            {tabs.map(t => (
-              <button key={t.key} onClick={() => setActiveTab(t.key)}
-                className={`flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                  activeTab === t.key
-                    ? "bg-[#CA8A04]/15 text-[#CA8A04] border border-[#CA8A04]/40"
-                    : "text-white/30 hover:text-white/60 border border-transparent"
-                }`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
+                 {/* Stats & Description */}
+                 <div className="space-y-6">
+                    <div className="bg-white/30 border border-[#8b4513]/10 p-4 rounded-sm text-center shadow-inner">
+                       <span className="text-sm font-black text-[#8b4513] tracking-widest uppercase">能力加成</span>
+                       <p className="text-2xl font-black mt-1">{selectedItem.def.statLabel || "????"}</p>
+                    </div>
+                    <p className="text-sm italic leading-relaxed text-center opacity-80 min-h-[4em]">
+                      「 {selectedItem.def.description} 」
+                    </p>
+                 </div>
 
-          {/* Hint */}
-          <div className="mx-3 mt-2 mb-0 rounded-lg border border-[#CA8A04]/15 bg-[#CA8A04]/5 px-3 py-1.5 flex items-center gap-2">
-            <span className="text-[#CA8A04] text-xs">⚡</span>
-            <span className="text-xs text-[#CA8A04]/60">點選道具查看詳情，右側「裝備」即可穿戴</span>
-          </div>
-
-          {/* Item Grid */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-4">
-            {/* Equipped section */}
-            {filteredItems.filter(i => isEquipped(i.key)).length > 0 && (
-              <section className="space-y-2">
-                <p className="text-[10px] font-bold text-[#CA8A04]/50 uppercase tracking-widest">✓ 已裝備</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {filteredItems.filter(i => isEquipped(i.key)).map(({ key, def }) => (
-                    <ItemCard key={key} itemKey={key} def={def} selected={selectedItem?.key === key} equipped onClick={() => handleItemClick({ key, def })} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Available section */}
-            {filteredItems.filter(i => !isEquipped(i.key)).length > 0 && (
-              <section className="space-y-2">
-                <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">可用裝備</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {filteredItems.filter(i => !isEquipped(i.key)).map(({ key, def }) => (
-                    <ItemCard key={key} itemKey={key} def={def} selected={selectedItem?.key === key} equipped={false} onClick={() => handleItemClick({ key, def })} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {filteredItems.length === 0 && (
-              <div className="text-center py-10 text-white/20 text-sm">此類別沒有可用道具</div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Panel C: Item Detail ────────────────────────────────────── */}
-        <div className="flex-shrink-0 w-56 flex flex-col">
-          {selectedItem ? (
-            <>
-              {/* Item name header */}
-              <div className="border-b border-white/5 px-4 py-3 text-center">
-                <p className="text-sm font-black text-white">{selectedItem.def.name}</p>
-                <p className="text-xs mt-0.5 font-bold" style={{ color: RARITY_COLORS[selectedItem.def.rarity] }}>
-                  {selectedItem.def.rarity === "COMMON" ? "普通" :
-                   selectedItem.def.rarity === "UNCOMMON" ? "優良" :
-                   selectedItem.def.rarity === "RARE" ? "稀有" :
-                   selectedItem.def.rarity === "EPIC" ? "史詩" : "傳說"}
-                </p>
-              </div>
-
-              {/* Big item preview */}
-              <div className="flex items-center justify-center py-6">
-                <div className="relative">
-                  {/* Glow ring */}
-                  <div className="absolute inset-0 rounded-2xl blur-xl"
-                    style={{ backgroundColor: RARITY_COLORS[selectedItem.def.rarity] + "30" }} />
-                  <div className="relative rounded-2xl border-2 p-5 text-6xl"
-                    style={{ borderColor: RARITY_COLORS[selectedItem.def.rarity] + "60", background: RARITY_COLORS[selectedItem.def.rarity] + "10" }}>
-                    {selectedItem.def.emoji}
-                  </div>
-                </div>
-              </div>
-
-              {/* Stat badge */}
-              <div className="mx-4 rounded-xl border border-[#CA8A04]/30 bg-[#CA8A04]/5 px-3 py-2 text-center mb-3">
-                <p className="text-sm font-black text-[#CA8A04]">{selectedItem.def.statLabel}</p>
-              </div>
-
-              {/* Description */}
-              <p className="text-xs text-white/35 px-4 text-center leading-relaxed">{selectedItem.def.description}</p>
-
-              {/* Slot indicator */}
-              <div className="mx-4 mt-4 flex items-center justify-center gap-1.5">
-                <span className="text-white/20 text-xs">放入</span>
-                <span className="text-xs font-bold border border-white/10 bg-white/5 px-2 py-0.5 rounded-md text-white/50">
-                  {SLOT_LABELS[selectedItem.def.slot]}
-                </span>
-                <span className="text-white/20 text-xs">欄</span>
-              </div>
-
-              {/* Action buttons */}
-              <div className="mt-auto p-4 space-y-2">
-                {isSelectedEquipped ? (
-                  <>
-                    <div className="text-center text-xs text-green-400 font-bold mb-1">✓ 已裝備</div>
-                    <button
-                      onClick={handleUnequip}
-                      disabled={saving}
-                      className="w-full rounded-xl border border-red-500/40 bg-red-900/20 py-2.5 text-sm font-black text-red-400 hover:bg-red-900/40 transition disabled:opacity-40 cursor-pointer">
-                      卸除裝備
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={handleEquipSelected}
-                    disabled={saving}
-                    className="w-full rounded-xl bg-gradient-to-r from-[#CA8A04] to-[#D97706] py-2.5 text-sm font-black text-[#0C0A09] hover:opacity-90 transition disabled:opacity-40 cursor-pointer shadow-lg shadow-[#CA8A04]/20">
-                    {saving ? "儲存中⋯" : "裝 備"}
-                  </button>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-4">
-              <span className="text-4xl opacity-20">🗡️</span>
-              <p className="text-xs text-white/20">選擇一件道具<br />查看詳情並裝備</p>
-            </div>
-          )}
+                 {/* Action area */}
+                 <div className="mt-auto pt-8 flex gap-3">
+                   {isEquipped(selectedItem.key) ? (
+                     <button 
+                       onClick={() => equip(selectedItem.def.slot, "")}
+                       disabled={saving}
+                       className="flex-1 bg-red-900/10 border-2 border-red-900/40 text-red-900 py-3 rounded-md font-black hover:bg-red-900/20 active:scale-95 transition-all uppercase tracking-widest disabled:opacity-50"
+                     >
+                       卸除裝備
+                     </button>
+                   ) : (
+                     <button 
+                       onClick={() => equip(selectedItem.def.slot, selectedItem.key)}
+                       disabled={saving}
+                       className="flex-1 bg-[#8b4513] text-[#f4e4bc] py-3 rounded-md font-black shadow-lg hover:brightness-110 active:scale-95 transition-all uppercase tracking-[0.2em] disabled:opacity-50"
+                     >
+                       {saving ? "詠唱中..." : "裝備此物"}
+                     </button>
+                   )}
+                 </div>
+               </motion.div>
+             ) : (
+               <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                  <div className="text-7xl mb-6">📜</div>
+                  <h4 className="text-xl font-black">英雄行囊</h4>
+                  <p className="text-xs mt-2 leading-relaxed">選擇左側或中間的道具<br />以此翻閱裝備秘法卷軸</p>
+               </div>
+             )}
+           </AnimatePresence>
         </div>
       </div>
+
+      {/* ── FOOTER ACTIONS ────────────────────────────────────────────── */}
+      <div className="flex gap-6 mt-4">
+         <button className="bg-green-700 hover:bg-green-600 text-white font-black px-8 py-3 rounded-sm border-2 border-black/20 shadow-xl active:translate-y-1 transition-all">
+           更換英雄
+         </button>
+         <button className="bg-zinc-700 hover:bg-zinc-600 text-white font-black px-12 py-3 rounded-sm border-2 border-black/20 shadow-xl active:translate-y-1 transition-all tracking-widest">
+           進入關卡
+         </button>
+      </div>
+
     </div>
-  )
-}
-
-// ─── ItemCard sub-component ───────────────────────────────────────────────────
-
-function ItemCard({ itemKey, def, selected, equipped, onClick }: {
-  itemKey: string
-  def: EquipmentItemDef
-  selected: boolean
-  equipped: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative flex flex-col items-center gap-1 rounded-xl border p-2 transition cursor-pointer text-center
-        ${selected
-          ? "border-[#CA8A04]/70 bg-[#CA8A04]/10 shadow-[0_0_10px_rgba(202,138,4,0.15)]"
-          : equipped
-            ? "border-green-500/30 bg-green-900/10 hover:border-green-400/50"
-            : "border-white/10 bg-white/3 hover:border-white/25 hover:bg-white/5"
-        }`}
-    >
-      {/* Corner rune */}
-      <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 border-t border-l border-[#CA8A04]/20 rounded-tl-sm" />
-      {equipped && (
-        <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-green-500 flex items-center justify-center">
-          <span className="text-[8px] text-white font-black">✓</span>
-        </div>
-      )}
-      {selected && (
-        <div className="absolute inset-0 rounded-xl"
-          style={{ boxShadow: `inset 0 0 8px ${RARITY_COLORS[def.rarity]}30` }} />
-      )}
-      <span className="text-xl leading-none">{def.emoji}</span>
-      <span className="text-[9px] text-white/50 leading-tight line-clamp-1">{def.name}</span>
-      {/* Rarity stripe */}
-      <div className="w-full h-0.5 rounded-full mt-0.5" style={{ backgroundColor: RARITY_COLORS[def.rarity] + "60" }} />
-    </button>
   )
 }

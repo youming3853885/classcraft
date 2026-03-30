@@ -141,6 +141,7 @@ interface CharacterAvatarProps {
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl"
   showAnimation?: boolean
   level?: number
+  noFrame?: boolean
 }
 
 export function CharacterAvatar({
@@ -149,6 +150,7 @@ export function CharacterAvatar({
   size = "md",
   showAnimation = false,
   level = 1,
+  noFrame = false,
 }: CharacterAvatarProps) {
   const [isAnimating, setIsAnimating] = useState(false)
   const cfg = CLASS_CONFIG[characterClass]
@@ -176,8 +178,13 @@ export function CharacterAvatar({
 
   return (
     <motion.div
-      className="relative flex-shrink-0 cursor-pointer select-none rounded-[32px] overflow-hidden"
-      style={{ width: px, height: px, backgroundColor: "#080705", border: `3px solid ${cfg.outline}` }}
+      className={`relative flex-shrink-0 cursor-pointer select-none ${noFrame ? "" : "rounded-[32px] overflow-hidden shadow-2xl"}`}
+      style={{ 
+        width: px, 
+        height: px, 
+        backgroundColor: noFrame ? "transparent" : "#080705", 
+        border: noFrame ? "none" : `3px solid ${cfg.outline}` 
+      }}
       onClick={triggerAnim}
       animate={isAnimating ? { scale: [1, 1.05, 0.98, 1.05, 1], rotate: [0, -1, 1, 0] } : {}}
       transition={{ duration: 0.5 }}
@@ -210,7 +217,7 @@ export function CharacterAvatar({
         <img 
           src={avatarPath} 
           alt={characterClass + " color burn"} 
-          className="absolute inset-0 w-full h-full object-cover object-top mix-blend-color-burn opacity-80" 
+          className={`absolute inset-0 w-full h-full object-cover object-top mix-blend-color-burn ${noFrame ? "opacity-40" : "opacity-80"}`} 
         />
       </div>
 
@@ -241,8 +248,12 @@ export function CharacterAvatar({
       )}
 
       {/* ── VIGNETTE OVERLAY ── */}
-      <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] pointer-events-none z-30" />
-      <div className="absolute inset-0 border border-white/10 rounded-[32px] pointer-events-none z-30" />
+      {!noFrame && (
+        <>
+          <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] pointer-events-none z-30" />
+          <div className="absolute inset-0 border border-white/10 rounded-[32px] pointer-events-none z-30" />
+        </>
+      )}
 
       {/* ── ACTIVE GEAR ICONS (Miniature Display) ── */}
       <div className="absolute right-2 top-2 z-40 flex flex-col gap-1.5 opacity-80">
@@ -255,18 +266,20 @@ export function CharacterAvatar({
       </div>
 
       {/* Level badge */}
-      <div
-        className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-md flex items-center justify-center font-black tracking-widest z-40 shadow-[0_4px_10px_rgba(0,0,0,0.8)]"
-        style={{
-          padding: "2px 8px",
-          backgroundColor: "#111",
-          color: cfg.primary,
-          border: `1px solid ${cfg.outline}`,
-          fontSize: Math.max(10, px * 0.08),
-        }}
-      >
-        L.{level}
-      </div>
+      {!noFrame && (
+        <div
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-md flex items-center justify-center font-black tracking-widest z-40 shadow-[0_4px_10px_rgba(0,0,0,0.8)]"
+          style={{
+            padding: "2px 8px",
+            backgroundColor: "#111",
+            color: cfg.primary,
+            border: `1px solid ${cfg.outline}`,
+            fontSize: Math.max(10, px * 0.08),
+          }}
+        >
+          L.{level}
+        </div>
+      )}
     </motion.div>
   )
 }
