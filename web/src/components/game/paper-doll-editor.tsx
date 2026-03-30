@@ -4,8 +4,6 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { CharacterAvatar, EQUIPMENT_REGISTRY, RARITY_COLORS, type CharacterEquipment, type EquipmentSlot, type EquipmentItemDef } from "@/components/game/character-avatar"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface OwnedItemEntry {
   key: string
   def: EquipmentItemDef
@@ -22,36 +20,22 @@ export interface PaperDollEditorProps {
 
 const SLOT_LABELS: Record<EquipmentSlot, string> = {
   helmet:    "頭部",
-  armor:     "身甲",
+  armor:     "胸甲",
   pants:     "腿部",
   guardian:  "守護",
   boots:     "足部",
   pet:       "寵物",
   offhand:   "左手",
   weapon:    "右手",
-  earring1:  "飾品1",
-  earring2:  "飾品2",
-  // legacy
-  cape:      "守護",
-  accessory: "飾品1",
+  earring1:  "飾品",
+  earring2:  "戒指",
+  cape:      "斗篷",
+  accessory: "項鍊",
 }
 
-// Position mapping for floating slots around the character
-// Assuming a 320x400 central area for the avatar
-const SLOT_POSITIONS: Record<EquipmentSlot, string> = {
-  helmet:   "top-4 left-1/2 -translate-x-1/2",
-  earring1: "top-12 left-8 md:left-4",
-  earring2: "top-12 right-8 md:right-4",
-  offhand:  "top-1/2 -translate-y-12 left-4 md:-left-2",
-  weapon:   "top-1/2 -translate-y-12 right-4 md:-right-2",
-  armor:    "bottom-1/3 left-6 md:left-2",
-  guardian: "top-0 right-0", // Floating
-  pet:      "bottom-4 left-4",
-  pants:    "bottom-4 left-1/2 -translate-x-12",
-  boots:    "bottom-4 left-1/2 translate-x-1",
-  cape:     "top-0 right-0",
-  accessory: "top-12 left-4",
-}
+// CodeCombat L-Layout Slots
+const TOP_SLOTS: EquipmentSlot[] = ["earring1", "earring2", "accessory", "helmet", "guardian", "pet"]
+const LEFT_SLOTS: EquipmentSlot[] = ["weapon", "offhand", "armor", "pants", "boots"]
 
 export function PaperDollEditor({
   classroomId,
@@ -69,18 +53,13 @@ export function PaperDollEditor({
   const [activeTab, setActiveTab] = useState<EquipmentSlot | "all">("all")
   const [saving, setSaving] = useState(false)
 
-  // Build owned item list
+  // Items logic
   const ownedItems: OwnedItemEntry[] = ownedItemKeys
     .filter(k => EQUIPMENT_REGISTRY[k])
     .map(k => ({ key: k, def: EQUIPMENT_REGISTRY[k] }))
 
-  const displayItems = ownedItems.length > 0 
-    ? ownedItems 
-    : Object.entries(EQUIPMENT_REGISTRY).map(([k, def]) => ({ key: k, def }))
-
-  const filteredItems = activeTab === "all"
-    ? displayItems
-    : displayItems.filter(i => i.def.slot === activeTab)
+  const displayItems = ownedItems.length > 0 ? ownedItems : Object.entries(EQUIPMENT_REGISTRY).map(([k, def]) => ({ key: k, def }))
+  const filteredItems = activeTab === "all" ? displayItems : displayItems.filter(i => i.def.slot === activeTab)
 
   const isEquipped = (key: string) => Object.values(equipment).includes(key)
 
@@ -95,19 +74,7 @@ export function PaperDollEditor({
       if (!res.ok) throw new Error(await res.text())
       const { equipment: newEq } = await res.json()
       setEquipment(newEq)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleSlotClick = (slot: EquipmentSlot) => {
-    const currentKey = (equipment as any)[slot]
-    if (currentKey) {
-      setSelectedItem({ key: currentKey, def: EQUIPMENT_REGISTRY[currentKey]! })
-    }
-    setHoveredSlot(slot)
+    } catch {} finally { setSaving(false) }
   }
 
   const getEquippedKey = (slot: EquipmentSlot): string | null | undefined => {
@@ -117,227 +84,166 @@ export function PaperDollEditor({
     return eq[slot]
   }
 
-  const Rivets = () => (
-    <>
-      <div className="rpg-rivet top-2 left-2" />
-      <div className="rpg-rivet top-2 right-2" />
-      <div className="rpg-rivet bottom-2 left-2" />
-      <div className="rpg-rivet bottom-2 right-2" />
-    </>
-  )
+  const SlotButton = ({ slot, className = "" }: { slot: EquipmentSlot, className?: string }) => {
+    const equipped = getEquippedKey(slot)
+    const def = equipped ? EQUIPMENT_REGISTRY[equipped] : null
+    const isActive = hoveredSlot === slot
 
-  const tabs: Array<{ key: EquipmentSlot | "all"; label: string }> = [
-    { key: "all",      label: "全部" },
-    { key: "helmet",   label: "頭" },
-    { key: "armor",    label: "裝" },
-    { key: "weapon",   label: "武" },
-    { key: "offhand",  label: "盾" },
-    { key: "pet",      label: "寵" },
-  ]
+    return (
+      <button
+        onClick={() => {
+          if (equipped) setSelectedItem({ key: equipped, def: def! })
+          setHoveredSlot(slot)
+        }}
+        className={`w-14 h-14 rpg-slot-base flex items-center justify-center transition-all relative group ${isActive ? "ring-2 ring-yellow-400 scale-105" : "hover:border-yellow-900/40"} ${className}`}
+      >
+        {def ? (
+          <span className="text-3xl drop-shadow-md">{def.emoji}</span>
+        ) : (
+          <span className="text-[10px] opacity-20 font-black">{SLOT_LABELS[slot]}</span>
+        )}
+      </button>
+    )
+  }
 
   return (
-    <div className="relative w-full flex flex-col items-center gap-8 py-10 select-none">
+    <div className="relative w-full max-w-6xl mx-auto flex flex-col items-center gap-0 select-none pb-20">
       
-      {/* ── HEADER PLATE ─────────────────────────────────────────────────── */}
-      <div className="relative z-20 rpg-wood px-12 py-3 mb-4 -rotate-1 shadow-2xl">
-         <Rivets />
-         <h2 className="text-3xl font-black text-[#f5a623] tracking-[0.2em] drop-shadow-[0_2px_2px_black]" style={{ fontFamily: "'Baloo 2', cursive" }}>
-           道具欄
-         </h2>
-         <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex gap-12">
-            <div className="rpg-chain" />
-            <div className="rpg-chain" />
+      {/* ── TOP NAV BAR (WOODEN) ────────────────────────────────────────── */}
+      <div className="w-full h-24 rpg-wood flex items-center justify-between px-10 relative z-30 translate-y-2">
+         <div className="flex items-center gap-4">
+            <h2 className="text-4xl font-black text-[#f4e4bc] drop-shadow-[0_2px_4px_black] tracking-widest" style={{ fontFamily: "'Baloo 2', cursive" }}>道具欄</h2>
+            <div className="rpg-parchment h-10 px-6 flex items-center gap-2 -rotate-1 shadow-lg">
+                <span className="text-xl">💎</span>
+                <span className="text-xl font-black text-[#5d4037]">844</span>
+            </div>
          </div>
+         <button className="rpg-close-btn">✖</button>
       </div>
 
-      {/* ── MAIN 3-PANEL STRETCH ────────────────────────────────────────── */}
-      <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-6 items-stretch">
+      {/* ── MAIN CONTENT AREA ──────────────────────────────────────────── */}
+      <div className="w-full flex flex-col md:flex-row gap-0 items-stretch bg-[#2a1b12]/90 border-x-4 border-b-4 border-[#1a110a] shadow-2xl p-6 rounded-b-lg">
         
-        {/* PANEL 1: HERO ALTAR (LEFT) */}
-        <div className="flex-1 min-h-[500px] rpg-wood p-6 flex items-center justify-center relative rounded-sm shadow-black/80">
-          <Rivets />
-          
-          {/* Central Hero Shrine */}
-          <div className="relative w-full h-full flex items-center justify-center">
-             <CharacterAvatar 
-               characterClass={characterClass} 
-               equipment={equipment} 
-               size="3xl" 
-               noFrame={true} 
-               showAnimation={true}
-               level={level}
-             />
-
-             {/* Dynamic Equipment Slots floating around */}
-             {(Object.keys(SLOT_LABELS) as EquipmentSlot[]).map((slot) => {
-                if (slot === "cape" || slot === "accessory") return null;
-                const equipped = getEquippedKey(slot);
-                const def = equipped ? EQUIPMENT_REGISTRY[equipped] : null;
-                const pos = SLOT_POSITIONS[slot];
-                const isActive = hoveredSlot === slot;
-
-                return (
-                  <button
-                    key={slot}
-                    onClick={() => handleSlotClick(slot)}
-                    className={`absolute ${pos} w-16 h-16 rounded-lg transition-all z-20 flex items-center justify-center
-                      ${isActive ? "rpg-slot-highlight" : "bg-black/40 border-2 border-white/10 hover:border-white/30"}
-                      ${def ? "shadow-lg" : "opacity-60"}
-                    `}
-                  >
-                    {def ? (
-                      <span className="text-3xl drop-shadow-md">{def.emoji}</span>
-                    ) : (
-                      <span className="text-white/10 text-xs font-black uppercase tracking-tighter">{SLOT_LABELS[slot]}</span>
-                    )}
-                    {/* Small tag */}
-                    <div className="absolute -bottom-1 -right-1 bg-black/80 text-[8px] px-1 text-white/40 border border-white/10 rounded-sm">
-                       {SLOT_LABELS[slot]}
-                    </div>
-                  </button>
-                )
-             })}
-          </div>
-
-          {/* Floor Shadow */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-48 h-8 bg-black/40 blur-xl rounded-full" />
-        </div>
-
-        {/* PANEL 2: INVENTORY SCROLL (MIDDLE) */}
-        <div className="w-full lg:w-80 rpg-parchment p-5 flex flex-col shadow-2xl animate-paper-float">
-          <div className="flex justify-between items-center mb-4 border-b border-black/10 pb-2">
-            <h3 className="font-black text-lg tracking-tight">可使用的裝備</h3>
-            <div className="w-6 h-1 bg-[#8b4513]/20 rounded-full" />
-          </div>
-
-          {/* Filter Tabs on Paper */}
-          <div className="flex flex-wrap gap-1 mb-4">
-             {tabs.map(t => (
-               <button 
-                 key={t.key} 
-                 onClick={() => setActiveTab(t.key)}
-                 className={`text-[10px] font-black px-2 py-0.5 rounded-sm transition-colors ${activeTab === t.key ? "bg-[#8b4513] text-[#f4e4bc]" : "hover:bg-[#8b4513]/10"}`}
-               >
-                 {t.label}
-               </button>
-             ))}
-          </div>
-
-          <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-             {/* Equipping List */}
-             <div className="grid grid-cols-2 gap-3">
-               {filteredItems.map(({ key, def }) => (
-                 <button
-                   key={key}
-                   onClick={() => setSelectedItem({ key, def })}
-                   className={`relative p-3 rounded-md border-2 transition-all group flex flex-col items-center gap-1
-                     ${isEquipped(key) ? "bg-green-600/10 border-green-800/20" : "bg-black/5 border-transparent hover:border-[#8b4513]/30"}
-                     ${selectedItem?.key === key ? "ring-2 ring-[#8b4513] border-[#8b4513]" : ""}
-                   `}
-                 >
-                   <span className="text-4xl group-hover:scale-110 transition-transform">{def.emoji}</span>
-                   <span className="text-[10px] font-bold text-center leading-tight opacity-70">{def.name}</span>
-                   {isEquipped(key) && <div className="absolute top-1 right-1 text-[8px] bg-green-800 text-white px-1 rounded-sm">裝備中</div>}
-                 </button>
-               ))}
-             </div>
-          </div>
-          
-          <div className="mt-4 pt-2 border-t border-black/5 text-[10px] italic opacity-60 flex items-center gap-2">
-            <span className="text-[#8b4513]">ⓘ</span> 連點物品兩下可直接裝備
-          </div>
-        </div>
-
-        {/* PANEL 3: DETAIL SCROLL (RIGHT) */}
-        <div className="w-full lg:w-96 rpg-parchment p-8 flex flex-col shadow-inner relative">
-           {/* Chains for right panel */}
-           <div className="absolute -top-4 left-4 flex flex-col gap-1 z-0">
-              <div className="rpg-chain" />
-           </div>
-           <div className="absolute -top-4 right-4 flex flex-col gap-1 z-0">
-              <div className="rpg-chain" />
+        {/* PANEL 1: CHARACTER + L-SLOTS (LEFT) */}
+        <div className="flex-[1.2] relative min-h-[500px] flex flex-col gap-4 pr-6 border-r border-white/5">
+           
+           {/* Top Slots Row */}
+           <div className="flex gap-2 mb-2">
+              {TOP_SLOTS.map(s => <SlotButton key={s} slot={s} />)}
            </div>
 
-           <AnimatePresence mode="wait">
-             {selectedItem ? (
-               <motion.div 
-                 key={selectedItem.key}
-                 initial={{ opacity: 0, x: 20 }}
-                 animate={{ opacity: 1, x: 0 }}
-                 exit={{ opacity: 0, x: -20 }}
-                 className="flex-1 flex flex-col h-full"
-               >
-                 {/* Top Label */}
-                 <div className="text-center mb-6">
-                    <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-1">物品圖錄</div>
-                    <h4 className="text-2xl font-black text-[#5d4037]">{selectedItem.def.name}</h4>
-                    <div className="w-16 h-0.5 bg-[#8b4513]/20 mx-auto mt-2" />
-                 </div>
+           <div className="flex-1 flex gap-6">
+              {/* Left Slots Column */}
+              <div className="flex flex-col gap-2">
+                 {LEFT_SLOTS.map(s => <SlotButton key={s} slot={s} />)}
+              </div>
 
-                 {/* Center Icon */}
-                 <div className="flex-1 flex items-center justify-center relative my-8">
-                    <div className="w-48 h-48 rounded-full border-4 border-dashed border-[#8b4513]/10 flex items-center justify-center">
-                       <span className="text-8xl drop-shadow-2xl">{selectedItem.def.emoji}</span>
-                    </div>
-                    {/* Rarity Seal */}
-                    <div className="absolute bottom-2 right-4 rotate-12 bg-white/40 border-2 border-[#8b4513]/20 rounded-full w-16 h-16 flex items-center justify-center shadow-lg backdrop-blur-sm px-2 text-center">
-                       <span className="text-[8px] font-black uppercase text-[#8b4513]" style={{ color: RARITY_COLORS[selectedItem.def.rarity] }}>
-                          {selectedItem.def.rarity}
-                       </span>
-                    </div>
-                 </div>
+              {/* Character Focus */}
+              <div className="flex-1 relative flex items-center justify-center bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_70%)]" />
+                 <CharacterAvatar 
+                   characterClass={characterClass} 
+                   equipment={equipment} 
+                   size="3xl" 
+                   noFrame={true} 
+                   showAnimation={true}
+                   level={level}
+                 />
+                 <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-40 h-6 bg-black/40 blur-xl rounded-full" />
+              </div>
+           </div>
 
-                 {/* Stats & Description */}
-                 <div className="space-y-6">
-                    <div className="bg-white/30 border border-[#8b4513]/10 p-4 rounded-sm text-center shadow-inner">
-                       <span className="text-sm font-black text-[#8b4513] tracking-widest uppercase">能力加成</span>
-                       <p className="text-2xl font-black mt-1">{selectedItem.def.statLabel || "????"}</p>
-                    </div>
-                    <p className="text-sm italic leading-relaxed text-center opacity-80 min-h-[4em]">
-                      「 {selectedItem.def.description} 」
-                    </p>
-                 </div>
-
-                 {/* Action area */}
-                 <div className="mt-auto pt-8 flex gap-3">
-                   {isEquipped(selectedItem.key) ? (
-                     <button 
-                       onClick={() => equip(selectedItem.def.slot, "")}
-                       disabled={saving}
-                       className="flex-1 bg-red-900/10 border-2 border-red-900/40 text-red-900 py-3 rounded-md font-black hover:bg-red-900/20 active:scale-95 transition-all uppercase tracking-widest disabled:opacity-50"
-                     >
-                       卸除裝備
-                     </button>
-                   ) : (
-                     <button 
-                       onClick={() => equip(selectedItem.def.slot, selectedItem.key)}
-                       disabled={saving}
-                       className="flex-1 bg-[#8b4513] text-[#f4e4bc] py-3 rounded-md font-black shadow-lg hover:brightness-110 active:scale-95 transition-all uppercase tracking-[0.2em] disabled:opacity-50"
-                     >
-                       {saving ? "詠唱中..." : "裝備此物"}
-                     </button>
-                   )}
-                 </div>
-               </motion.div>
-             ) : (
-               <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-                  <div className="text-7xl mb-6">📜</div>
-                  <h4 className="text-xl font-black">英雄行囊</h4>
-                  <p className="text-xs mt-2 leading-relaxed">選擇左側或中間的道具<br />以此翻閱裝備秘法卷軸</p>
-               </div>
-             )}
-           </AnimatePresence>
+           {/* Mobile Buttons */}
+           <div className="mt-6 flex gap-3">
+              <button className="flex-1 py-3 px-6 rounded-sm bg-[#4a7c44] border-b-4 border-black/40 text-[#f4e4bc] font-black text-sm uppercase tracking-widest shadow-lg hover:brightness-110 active:translate-y-1 transition-all">更換英雄</button>
+              <button className="flex-1 py-3 px-6 rounded-sm bg-[#6d6d6d] border-b-4 border-black/40 text-[#f4e4bc] font-black text-sm uppercase tracking-widest shadow-lg hover:brightness-110 active:translate-y-1 transition-all">進入關卡</button>
+           </div>
         </div>
-      </div>
 
-      {/* ── FOOTER ACTIONS ────────────────────────────────────────────── */}
-      <div className="flex gap-6 mt-4">
-         <button className="bg-green-700 hover:bg-green-600 text-white font-black px-8 py-3 rounded-sm border-2 border-black/20 shadow-xl active:translate-y-1 transition-all">
-           更換英雄
-         </button>
-         <button className="bg-zinc-700 hover:bg-zinc-600 text-white font-black px-12 py-3 rounded-sm border-2 border-black/20 shadow-xl active:translate-y-1 transition-all tracking-widest">
-           進入關卡
-         </button>
+        {/* PANEL 2: INVENTORY LIST (MIDDLE) */}
+        <div className="flex-1 px-4 flex flex-col gap-4">
+           <h3 className="text-[#f4e4bc] font-black text-xl tracking-tight border-b border-white/10 pb-2">可使用的裝備</h3>
+           <div className="flex-1 overflow-y-auto pr-1 grid grid-cols-2 gap-3 max-h-[500px] scrollbar-thin">
+              {filteredItems.map(({ key, def }) => (
+                <button
+                  key={key}
+                  onClick={() => setSelectedItem({ key, def })}
+                  className={`group relative p-3 bg-black/30 border-2 rounded transition-all flex flex-col items-center gap-1
+                    ${isEquipped(key) ? "border-green-600/40 bg-green-900/10" : "border-[#1a110a] hover:border-yellow-900/60"}
+                    ${selectedItem?.key === key ? "border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]" : ""}
+                  `}
+                >
+                  <span className="text-4xl group-hover:scale-110 transition-transform drop-shadow-md">{def.emoji}</span>
+                  <div className="absolute -bottom-1 left-0 right-0 bg-[#3d2b1f] py-0.5 text-center">
+                     <span className="text-[9px] font-black text-[#f4e4bc]/60 uppercase tracking-tighter">裝備</span>
+                  </div>
+                  {isEquipped(key) && <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-green-500 shadow-[0_0_5px_green]" />}
+                </button>
+              ))}
+           </div>
+           
+           <div className="p-3 bg-blue-900/10 border border-blue-500/20 rounded-md flex items-center gap-3">
+              <span className="text-blue-400 text-lg">ℹ</span>
+              <p className="text-[10px] text-blue-200/60 font-black leading-tight">連點物品兩下可快速穿戴或卸除。<br/>注意：某些裝備有職業限制。</p>
+           </div>
+        </div>
+
+        {/* PANEL 3: ITEM INFO (RIGHT) */}
+        <div className="w-full lg:w-80 flex flex-col items-stretch pt-2">
+           <div className="rpg-parchment p-8 flex-1 flex flex-col shadow-2xl relative translate-x-2">
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex gap-10">
+                 <div className="rpg-chain" />
+                 <div className="rpg-chain" />
+              </div>
+
+              {selectedItem ? (
+                <div className="flex-1 flex flex-col">
+                   <div className="text-center mb-6">
+                      <p className="text-[9px] font-black opacity-40 tracking-[0.4em] uppercase">物品詳情</p>
+                      <h4 className="text-2xl font-black text-[#5d4037] mt-1">{selectedItem.def.name}</h4>
+                      <div className="w-full h-px bg-black/10 mt-2" />
+                   </div>
+
+                   <div className="flex-1 flex items-center justify-center py-4">
+                      <div className="w-32 h-32 rounded-full border-2 border-dashed border-black/10 flex items-center justify-center relative bg-white/10">
+                         <span className="text-7xl drop-shadow-xl">{selectedItem.def.emoji}</span>
+                         <div className="absolute -bottom-2 -right-2 bg-[#8b4513] text-[#f4e4bc] text-[9px] px-2 py-0.5 rounded font-black shadow-md uppercase">
+                            {selectedItem.def.rarity}
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="space-y-4 mb-4">
+                      <div className="rpg-parchment-sub bg-black/5 border border-black/10 p-3 text-center rounded-sm shadow-inner">
+                         <span className="text-[10px] uppercase font-black opacity-60">效果</span>
+                         <p className="text-xl font-black text-[#5d4037]">{selectedItem.def.statLabel}</p>
+                      </div>
+                      <p className="text-xs text-[#5d4037]/80 italic text-center px-2 min-h-[3em]">
+                        「 {selectedItem.def.description} 」
+                      </p>
+                   </div>
+
+                   {/* Big Equip Button */}
+                   <button 
+                     onClick={() => equip(selectedItem.def.slot, isEquipped(selectedItem.key) ? "" : selectedItem.key)}
+                     disabled={saving}
+                     className={`w-full py-4 rounded-md font-black shadow-xl tracking-[0.3em] active:scale-95 transition-all
+                       ${isEquipped(selectedItem.key) 
+                         ? "bg-red-800 text-white border-b-4 border-red-950" 
+                         : "bg-[#8b4513] text-[#f4e4bc] border-b-4 border-[#4a2e16] hover:brightness-110"
+                       } disabled:opacity-50`}
+                   >
+                     {saving ? "SAVING..." : (isEquipped(selectedItem.key) ? "卸除" : "裝備")}
+                   </button>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center opacity-30 pb-10">
+                   <div className="text-7xl mb-4">📜</div>
+                   <p className="text-sm font-black text-[#5d4037]">點擊左側物品<br/>查看冒險筆記</p>
+                </div>
+              )}
+           </div>
+        </div>
       </div>
 
     </div>

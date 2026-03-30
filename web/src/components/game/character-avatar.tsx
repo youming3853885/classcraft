@@ -212,12 +212,12 @@ export function CharacterAvatar({
         <img 
           src={avatarPath} 
           alt={characterClass} 
-          className="w-full h-full object-cover object-top filter contrast-125 saturate-110 drop-shadow-2xl mix-blend-luminosity brightness-75 transition-all duration-300 group-hover:mix-blend-normal group-hover:brightness-100" 
+          className={`w-full h-full object-cover object-top filter contrast-150 saturate-150 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] ${noFrame ? "brightness-110" : "brightness-75 grayscale group-hover:grayscale-0 group-hover:brightness-100"} transition-all duration-300`} 
         />
         <img 
           src={avatarPath} 
           alt={characterClass + " color burn"} 
-          className={`absolute inset-0 w-full h-full object-cover object-top mix-blend-color-burn ${noFrame ? "opacity-40" : "opacity-80"}`} 
+          className={`absolute inset-0 w-full h-full object-cover object-top mix-blend-color-dodge ${noFrame ? "opacity-30" : "opacity-80"}`} 
         />
       </div>
 
